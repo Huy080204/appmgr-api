@@ -68,7 +68,7 @@ def buildDev(){
                     # so `checkout scm` never removes them. Without this `cp -r` would only overwrite and add,
                     # leaving files deleted from the repo behind and breaking the compile.
                     rm -rf dev-ops/src dev-ops/pom.xml dev-ops/target
-                    cp -r source/logs-api/* dev-ops/
+                    cp -r source/appmgr-api/* dev-ops/
                     cd dev-ops
                     cp config/* src/main/resources/
                     mvn clean package -Dmaven.test.skip
