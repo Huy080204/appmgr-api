@@ -13,9 +13,7 @@ import com.appmgr.api.mapper.CategoryMapper;
 import com.appmgr.api.model.Category;
 import com.appmgr.api.model.criteria.CategoryCriteria;
 import com.appmgr.api.repository.CategoryRepository;
-import com.appmgr.api.service.FileService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,9 +47,6 @@ public class CategoryController extends ABasicController {
     @Autowired
     private CategoryMapper categoryMapper;
 
-    @Autowired
-    private FileService fileService;
-
     @Transactional
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('CAT_C')")
@@ -73,10 +68,6 @@ public class CategoryController extends ABasicController {
         if (!Objects.equals(updateCategoryForm.getName(), category.getName())
                 && categoryRepository.existsByNameAndIdNot(updateCategoryForm.getName(), category.getId())) {
             throw new BadRequestException("Category name already exist", ErrorCode.CATEGORY_ERROR_NAME_EXIST);
-        }
-        String oldAvatar = category.getAvatar();
-        if (StringUtils.isNoneBlank(oldAvatar) && !Objects.equals(updateCategoryForm.getAvatar(), oldAvatar)) {
-            fileService.deleteFile(oldAvatar);
         }
         categoryMapper.updateEntityFromForm(updateCategoryForm, category);
         categoryRepository.save(category);
@@ -104,9 +95,6 @@ public class CategoryController extends ABasicController {
     public ApiMessageDto<Void> delete(@PathVariable("id") Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Category not found", ErrorCode.CATEGORY_ERROR_NOT_FOUND));
-        if (StringUtils.isNoneBlank(category.getAvatar())) {
-            fileService.deleteFile(category.getAvatar());
-        }
         categoryRepository.deleteById(id);
         return makeSuccessResponse("Delete category success");
     }

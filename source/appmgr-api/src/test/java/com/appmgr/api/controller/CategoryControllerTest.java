@@ -12,7 +12,6 @@ import com.appmgr.api.mapper.CategoryMapper;
 import com.appmgr.api.model.Category;
 import com.appmgr.api.model.criteria.CategoryCriteria;
 import com.appmgr.api.repository.CategoryRepository;
-import com.appmgr.api.service.FileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,9 +46,6 @@ class CategoryControllerTest {
 
     @Mock
     private CategoryMapper categoryMapper;
-
-    @Mock
-    private FileService fileService;
 
     @InjectMocks
     private CategoryController categoryController;
@@ -199,7 +195,6 @@ class CategoryControllerTest {
         category.setId(1L);
         category.setName("Books");
         category.setDescription("Book category");
-        category.setAvatar("/books.png");
         Page<Category> page = new PageImpl<>(Collections.singletonList(category), pageable, 1);
 
         CategoryDto dto = new CategoryDto();
@@ -220,7 +215,6 @@ class CategoryControllerTest {
         assertThat(returned.getId()).isEqualTo(1L);
         assertThat(returned.getName()).isEqualTo("Books");
         assertThat(returned.getDescription()).isNull();
-        assertThat(returned.getAvatar()).isNull();
         verify(categoryRepository).findAll(any(Specification.class), eq(pageable));
         verify(categoryMapper, never()).fromEntityToCategoryDtoList(anyList());
     }
@@ -272,25 +266,7 @@ class CategoryControllerTest {
     }
 
     @Test
-    void shouldDeleteAvatarFileWhenDeletingCategoryWithNonBlankAvatar() {
-        // Arrange
-        Category category = new Category();
-        category.setId(1L);
-        category.setAvatar("/to-delete.png");
-
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-
-        // Act
-        ApiMessageDto<Void> result = categoryController.delete(1L);
-
-        // Assert
-        assertThat(result.getResult()).isTrue();
-        verify(fileService).deleteFile("/to-delete.png");
-        verify(categoryRepository).deleteById(1L);
-    }
-
-    @Test
-    void shouldNotDeleteAvatarFileWhenDeletingCategoryWithBlankAvatar() {
+    void shouldDeleteCategoryWhenIdExists() {
         // Arrange
         Category category = new Category();
         category.setId(1L);
@@ -302,7 +278,6 @@ class CategoryControllerTest {
 
         // Assert
         assertThat(result.getResult()).isTrue();
-        verify(fileService, never()).deleteFile(anyString());
         verify(categoryRepository).deleteById(1L);
     }
 }

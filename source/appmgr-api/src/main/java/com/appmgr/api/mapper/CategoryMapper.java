@@ -21,21 +21,18 @@ import java.util.List;
 public interface CategoryMapper {
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
-    @Mapping(source = "avatar", target = "avatar")
     @BeanMapping(ignoreByDefault = true)
     @Named("fromCreateCategoryFormToEntity")
     Category fromCreateCategoryFormToEntity(CreateCategoryForm createCategoryForm);
 
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
-    @Mapping(source = "avatar", target = "avatar")
     @BeanMapping(ignoreByDefault = true)
     void updateEntityFromForm(UpdateCategoryForm updateCategoryForm, @MappingTarget Category category);
 
     @Mapping(source = "id", target = "id")
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
-    @Mapping(source = "avatar", target = "avatar")
     @Mapping(source = "createdDate", target = "createdDate")
     @Mapping(source = "modifiedDate", target = "modifiedDate")
     @Mapping(source = "status", target = "status")

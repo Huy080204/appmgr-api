@@ -1,44 +1,48 @@
 _BUILD_NUMBER = env.BUILD_NUMBER
-_BRANCH_NAME = env.BRANCH_NAME
+// _BRANCH_NAME = env.BRANCH_NAME
+_BRANCH_NAME = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst("origin/", "") ?: "dev"
 
 TIMEZONE = "GMT+7"
 APP_BOOT_TIME_SECOND = 30
-SLACK_CHANNEL_NAME = "GMQ6JQ1FT"
+SLACK_CHANNEL_NAME = "C0BML3ZENPK"
 
-TARTGET_FOLDER_DEPLOY="/data/deploy/allwin"
-JAR_NAME = "ww-auth-0.0.1.jar"
+TARTGET_FOLDER_DEPLOY="/opt/deploy/appmgr/api"
+JAR_NAME = "appmgr-api-0.0.1.jar"
 
 
-APP_NAME = "ww-auth"
+APP_NAME = "appmgr-api"
+LOG_PATH="/var/log/appmgr/api"
 
-// Dev env
-PORT_DEV=6401
+PORT_DEV=1003
+HOST_DEV="192.168.102.7"
 
 
 BUILD_FOLER="dev-ops"
+TARTGET_BRANCH_DEPLOY="dev"
 
-
-
-//node("slave-gcp") {
 node{
     try {
-        if (_BRANCH_NAME.matches("dev")) {
+        if (_BRANCH_NAME.matches(TARTGET_BRANCH_DEPLOY)) {
             notifyBuild("STARTED", SLACK_CHANNEL_NAME)
         }
 
-        stage ("Checkout source") {
+        stage("Checkout source") {
             checkout scm
         }
 
-        buildMaster()
+        stage("Unit test") {
 
-        
+        }
+
+        buildDev()
+
+
         currentBuild.result = "SUCCESS"
     } catch (e) {
         currentBuild.result = "FAILURE"
         throw e
     } finally {
-        if (_BRANCH_NAME.matches("dev")) {
+        if (_BRANCH_NAME.matches(TARTGET_BRANCH_DEPLOY)) {
             def time = formatMilisecondTime(currentBuild.timeInMillis, TIMEZONE)
             def duration = durationFormat(currentBuild.duration)
             def buildDetail = "\n————————————————————" +
@@ -46,20 +50,25 @@ node{
                               "\n*Duration:* ${duration}" +
                               "\n*Change Log (DESC):*\n${getChangeLog()}"
 
-            sleep(APP_BOOT_TIME_SECOND)
             notifyBuild(currentBuild.result, SLACK_CHANNEL_NAME, buildDetail)
         }
     }
 
 }
 
-def buildMaster(){
-    if (_BRANCH_NAME.matches("dev")) {
+def buildDev(){
+    if (_BRANCH_NAME.matches(TARTGET_BRANCH_DEPLOY)) {
 
-        stage ("Build source") {
-            withEnv( ["PATH+MAVEN=/usr/local/src/apache-maven/bin"] ) {
+        stage("Build source") {
+            def jdkHome = tool name: 'jdk11', type: 'jdk'
+            withEnv( ["PATH+MAVEN=/usr/bin", "JAVA_HOME=${jdkHome}", "PATH+JDK=${jdkHome}/bin"] ) {
                 sh """
-                    cp -r source/ww-auth/* dev-ops/
+                    java -version
+                    # dev-ops/src, dev-ops/pom.xml and dev-ops/target are build artifacts, not tracked by git,
+                    # so `checkout scm` never removes them. Without this `cp -r` would only overwrite and add,
+                    # leaving files deleted from the repo behind and breaking the compile.
+                    rm -rf dev-ops/src dev-ops/pom.xml dev-ops/target
+                    cp -r source/logs-api/* dev-ops/
                     cd dev-ops
                     cp config/* src/main/resources/
                     mvn clean package -Dmaven.test.skip
@@ -68,44 +77,58 @@ def buildMaster(){
         }
 
         stage("Upload to remote") {
-            sh """
-                sudo mkdir -p ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev
-            """
-            
-            try {
-                sh """
-                    sudo docker-compose -f ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml down
-                """
-            } catch (e) {
 
+            def remote = [:]
+            remote.name = "Server"
+            remote.host = HOST_DEV
+            remote.allowAnyHosts = true
+
+            withCredentials([sshUserPrivateKey(credentialsId: 'ssh_credentials', keyFileVariable: 'identity', passphraseVariable: '', usernameVariable: 'userName')]) {
+                remote.user = userName
+                remote.identityFile = identity
+
+                try {
+                    // Stop old service
+                    sshCommand remote: remote, command: "systemctl stop ${APP_NAME}.service"
+                    sshCommand remote: remote, command: "rm -rf /lib/systemd/system/${APP_NAME}.service"
+                } catch (e) {
+
+                }
+
+
+                // Delete old data
+                sshRemove remote: remote, path: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}"
+                sshCommand remote: remote, command: "mkdir -p ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}"
+
+                // Replace some params by env on application servic
+                TARTGET_FOLDER_DEPLOY_ESC=TARTGET_FOLDER_DEPLOY.replace("/", "\\/")
+                sh """
+                    sed -i 's/{APP_ID}/${APP_NAME}/g' ./${BUILD_FOLER}/service-template-dev.service
+                    sed -i 's/{ENV}/dev/g' ./${BUILD_FOLER}/service-template-dev.service
+                    sed -i 's/{PORT}/${PORT_DEV}/g' ./${BUILD_FOLER}/config/application-dev.properties
+                    sed -i 's/{CONFIG_LOCATION}/${TARTGET_FOLDER_DEPLOY_ESC}\\/${APP_NAME}/g' ./${BUILD_FOLER}/service-template-dev.service
+                """
+
+                // Upload build to remote
+                sshPut remote: remote, from: "./${BUILD_FOLER}/target/${JAR_NAME}", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/app.jar"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/service-template-dev.service", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/${APP_NAME}.service"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application-dev.properties", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application.properties", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/"
+
+                // Init log dir (logback writes the log file itself)
+                sshCommand remote: remote, command: "mkdir -p ${LOG_PATH}"
+
+                // Deploy service
+                sshCommand remote: remote, command: "mv ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/${APP_NAME}.service /lib/systemd/system/${APP_NAME}.service"
+                sshCommand remote: remote, command: "chmod 644 /lib/systemd/system/${APP_NAME}.service && systemctl daemon-reload"
+                sshCommand remote: remote, command: "systemctl enable ${APP_NAME}.service"
+                sshCommand remote: remote, command: "systemctl start ${APP_NAME}.service"
             }
 
-            sh """
-                sudo docker rmi -f ${APP_NAME}-dev:1.0
-                sudo rm -rf ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/*
-
-                sudo cp ./${BUILD_FOLER}/target/${JAR_NAME} ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/
-                sudo cp ./${BUILD_FOLER}/docker-compose.yml ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/
-                sudo cp ./${BUILD_FOLER}/Dockerfile ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/
-
-
-                sudo sed -i 's/{CONTAINER_NAME}/${APP_NAME}-dev/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml
-                sudo sed -i 's/{CONTAINER_IMAGE}/${APP_NAME}-dev/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml
-                sudo sed -i 's/{PROFILES_ACTIVE}/dev/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml
-                sudo sed -i 's/{PORT}/${PORT_DEV}/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml
-                sudo sed -i 's/{SERVICE_NAME}/${APP_NAME}-dev/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml
-
-                sudo sed -i 's/{JAR_FILE}/${JAR_NAME}/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/Dockerfile
-                sudo sed -i 's/{PROFILES_ACTIVE}/dev/g' ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/Dockerfile
-                sudo docker build -t ${APP_NAME}-dev:1.0 -f ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/Dockerfile ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/
-
-            """
         }
 
-        stage ("Deploy") {
-            sh """
-                sudo docker-compose -f ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}-dev/docker-compose.yml up -d
-            """
+        stage("Deploy") {
+            sleep(APP_BOOT_TIME_SECOND)
         }
 
     }
@@ -118,7 +141,7 @@ def buildMaster(){
 def notifyEnv(String message = "",String channelName) {
     def colorName = "good"
     def emoji = ":white_check_mark:"
-    
+
     def text = "${emoji} ${message}"
     slackSend (channel: channelName, failOnError: true, color: colorName, message: text)
 }

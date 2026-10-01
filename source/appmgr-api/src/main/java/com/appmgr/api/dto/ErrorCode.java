@@ -20,6 +20,18 @@ public class ErrorCode {
     public static final String PERMISSION_ERROR_NOT_FOUND = "ERROR-PERMISSION-002";
 
     /**
+     * Project error code
+     */
+    public static final String PROJECT_ERROR_NAME_EXIST = "ERROR-PROJECT-000";
+    public static final String PROJECT_ERROR_NOT_FOUND = "ERROR-PROJECT-001";
+
+    /**
+     * Application error code
+     */
+    public static final String APPLICATION_ERROR_NAME_EXIST = "ERROR-APPLICATION-000";
+    public static final String APPLICATION_ERROR_NOT_FOUND = "ERROR-APPLICATION-001";
+
+    /**
      * Starting error code Account
      */
     public static final String ACCOUNT_ERROR_UNKNOWN = "ERROR-ACCOUNT-0000";

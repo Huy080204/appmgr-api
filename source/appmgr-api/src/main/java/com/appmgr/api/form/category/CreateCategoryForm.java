@@ -16,7 +16,4 @@ public class CreateCategoryForm {
 
     @Schema(name = "description")
     private String description;
-
-    @Schema(name = "avatar")
-    private String avatar;
 }
