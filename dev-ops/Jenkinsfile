@@ -97,8 +97,8 @@ def buildDev(){
 
 
                 // Delete old data
-                sshRemove remote: remote, path: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}"
-                sshCommand remote: remote, command: "mkdir -p ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}"
+                sshRemove remote: remote, path: "${TARTGET_FOLDER_DEPLOY}"
+                sshCommand remote: remote, command: "mkdir -p ${TARTGET_FOLDER_DEPLOY}"
 
                 // Replace some params by env on application servic
                 TARTGET_FOLDER_DEPLOY_ESC=TARTGET_FOLDER_DEPLOY.replace("/", "\\/")
@@ -106,20 +106,20 @@ def buildDev(){
                     sed -i 's/{APP_ID}/${APP_NAME}/g' ./${BUILD_FOLER}/service-template-dev.service
                     sed -i 's/{ENV}/dev/g' ./${BUILD_FOLER}/service-template-dev.service
                     sed -i 's/{PORT}/${PORT_DEV}/g' ./${BUILD_FOLER}/config/application-dev.properties
-                    sed -i 's/{CONFIG_LOCATION}/${TARTGET_FOLDER_DEPLOY_ESC}\\/${APP_NAME}/g' ./${BUILD_FOLER}/service-template-dev.service
+                    sed -i 's/{CONFIG_LOCATION}/${TARTGET_FOLDER_DEPLOY_ESC}/g' ./${BUILD_FOLER}/service-template-dev.service
                 """
 
                 // Upload build to remote
-                sshPut remote: remote, from: "./${BUILD_FOLER}/target/${JAR_NAME}", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/app.jar"
-                sshPut remote: remote, from: "./${BUILD_FOLER}/service-template-dev.service", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/${APP_NAME}.service"
-                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application-dev.properties", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/"
-                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application.properties", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/target/${JAR_NAME}", into: "${TARTGET_FOLDER_DEPLOY}/app.jar"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/service-template-dev.service", into: "${TARTGET_FOLDER_DEPLOY}/${APP_NAME}.service"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application-dev.properties", into: "${TARTGET_FOLDER_DEPLOY}/"
+                sshPut remote: remote, from: "./${BUILD_FOLER}/config/application.properties", into: "${TARTGET_FOLDER_DEPLOY}/"
 
                 // Init log dir (logback writes the log file itself)
                 sshCommand remote: remote, command: "mkdir -p ${LOG_PATH}"
 
                 // Deploy service
-                sshCommand remote: remote, command: "mv ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}/${APP_NAME}.service /lib/systemd/system/${APP_NAME}.service"
+                sshCommand remote: remote, command: "mv ${TARTGET_FOLDER_DEPLOY}/${APP_NAME}.service /lib/systemd/system/${APP_NAME}.service"
                 sshCommand remote: remote, command: "chmod 644 /lib/systemd/system/${APP_NAME}.service && systemctl daemon-reload"
                 sshCommand remote: remote, command: "systemctl enable ${APP_NAME}.service"
                 sshCommand remote: remote, command: "systemctl start ${APP_NAME}.service"
