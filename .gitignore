@@ -1,0 +1,43 @@
+/target/
+/logs
+!.mvn/wrapper/maven-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+*.log
+
+### NetBeans ###
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### project ignore ###
+source/appmgr-api/application-production.properties
+source/appmgr-api/deploy_ec2.sh
+source/appmgr-api/execute_jar_on_vm.sh
+source/appmgr-api/target
+source/appmgr-api/logs
+source/appmgr-api/.idea
+source/appmgr-api/*.iml
+
+# Vibe Setting
+.claude
+vibe_setting.json
+ai-setup
+ai-setup.ps1
+bash.exe.stackdump

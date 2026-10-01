@@ -1,0 +1,11 @@
+Note for dev ops
+Build: mvn clean package -Dmaven.test.skip
+
+
+CREATE DATABASE db_ww_auth CHARACTER SET utf8;
+CREATE USER 'db_ww_auth-usr' IDENTIFIED BY 'db_ww_auth-usr@123';
+CREATE USER 'db_ww_auth-usr'@'localhost' IDENTIFIED BY 'db_ww_auth-usr@123';
+
+GRANT ALL PRIVILEGES ON db_ww_auth.* TO 'db_ww_auth-usr';
+FLUSH PRIVILEGES;
+

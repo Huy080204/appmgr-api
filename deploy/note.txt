@@ -1,0 +1,20 @@
+**** Dev log for spring
+- On service add following line
+	StandardOutput=syslog
+	StandardError=syslog
+	SyslogIdentifier=rapos-api
+
+- Create log service config /etc/rsyslog.d/rapos-api.conf
+	if $programname == 'rapos-api' then /var/log/rapos/rapos-api.log & stop
+
+- Create file for log:
+	touch /var/log/rapos/rapos-api.log
+
+- Restart log service
+	systemctl restart rsyslog
+
+- Start application
+
+
+# Lesencrypt
+	certbot certonly --standalone --noninteractive --agree-tos -m droiddev89@gmail.com -d inhouse-media.developteam.net

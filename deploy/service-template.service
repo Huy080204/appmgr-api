@@ -1,0 +1,16 @@
+[Unit]
+Description=Itz API Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory={CONFIG_LOCATION}
+
+ExecStart=/usr/bin/java -Dspring.profiles.active={ENV} -cp "app.jar:lib/*" com.base.Application --server.address=0.0.0.0
+SuccessExitStatus=143
+SyslogIdentifier={APP_ID}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
