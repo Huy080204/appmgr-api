@@ -1,15 +1,17 @@
 [Unit]
-Description=Template Universal api service 
+Description=App Mgr API Service
+After=network.target
 
 [Service]
-#User=root #use user with restricted permissions
-#Type=simple
+User=root
+WorkingDirectory={CONFIG_LOCATION}
 
-ExecStart=/usr/bin/java -jar -Dfile.encoding=UTF-8 -Dspring.config.location={CONFIG_LOCATION}/ -Dspring.profiles.active={ENV} -Djava.security.egd=file:/dev/./urandom {CONFIG_LOCATION}/app.jar
+ExecStart=/usr/bin/java -Dfile.encoding=UTF-8 -Djava.security.egd=file:/dev/./urandom -Dspring.profiles.active={ENV} -jar app.jar --server.address=0.0.0.0
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier={APP_ID}
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
