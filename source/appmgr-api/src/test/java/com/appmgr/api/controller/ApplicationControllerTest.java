@@ -13,9 +13,11 @@ import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.repository.ApplicationRepository;
 import com.appmgr.api.repository.ProjectRepository;
+import com.appmgr.api.repository.VersionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -31,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +49,9 @@ class ApplicationControllerTest {
 
     @Mock
     private ProjectRepository projectRepository;
+
+    @Mock
+    private VersionRepository versionRepository;
 
     @Spy
     private ApplicationMapper applicationMapper = Mappers.getMapper(ApplicationMapper.class);
@@ -226,6 +232,19 @@ class ApplicationControllerTest {
     }
 
     // ------------------------------------------------------------------ delete
+
+    @Test
+    void shouldDeleteVersionsBeforeDeletingApplication() {
+        Application existing = application(5L, "App", project(1L));
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(existing));
+
+        ApiMessageDto<Void> result = controller.delete(5L);
+
+        assertThat(result.getResult()).isTrue();
+        InOrder order = inOrder(versionRepository, applicationRepository);
+        order.verify(versionRepository).deleteAllByApplicationId(5L);
+        order.verify(applicationRepository).delete(existing);
+    }
 
     @Test
     void shouldDeleteApplicationSuccessfully() {

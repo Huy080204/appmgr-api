@@ -24,6 +24,13 @@ public class BaseConstant {
 
     public static final Integer GROUP_KIND_ADMIN = 1;
 
+    public static final Integer VERSION_TYPE_BUNDLE = 1;
+    public static final Integer VERSION_TYPE_STORE = 2;
+    public static final Integer VERSION_TYPE_OTA = 3;
+
+    public static final String VERSION_FOLDER = "APP_VERSION";
+    public static final String VERSION_DOWNLOAD_PATH = "/v1/bundle/download-version";
+
     private BaseConstant() {
         throw new IllegalStateException("Utility class");
     }

@@ -71,4 +71,12 @@ public class ErrorCode {
      */
     public static final String CHANNEL_ERROR_NOT_FOUND = "ERROR-CHANNEL-000";
     public static final String CHANNEL_ERROR_NAME_EXISTED = "ERROR-CHANNEL-001";
+
+    /**
+     * Version error code
+     */
+    public static final String VERSION_ERROR_NOT_FOUND = "ERROR-VERSION-000";
+    public static final String VERSION_ERROR_METADATA_NOT_FOUND = "ERROR-VERSION-001";
+    public static final String VERSION_ERROR_ZIP_ENTRY_INVALID = "ERROR-VERSION-002";
+    public static final String VERSION_ERROR_STORE_FILE_FAILED = "ERROR-VERSION-003";
 }

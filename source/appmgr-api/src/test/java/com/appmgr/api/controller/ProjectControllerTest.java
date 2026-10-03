@@ -13,6 +13,7 @@ import com.appmgr.api.model.Project;
 import com.appmgr.api.model.criteria.ProjectCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
 import com.appmgr.api.repository.ProjectRepository;
+import com.appmgr.api.repository.VersionRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +54,9 @@ class ProjectControllerTest {
 
     @Mock
     private ApplicationRepository applicationRepository;
+
+    @Mock
+    private VersionRepository versionRepository;
 
     @Spy
     private ProjectMapper projectMapper = Mappers.getMapper(ProjectMapper.class);
@@ -215,7 +219,8 @@ class ProjectControllerTest {
         ApiMessageDto<Void> result = controller.delete(1L);
 
         assertThat(result.getResult()).isTrue();
-        InOrder order = inOrder(applicationRepository, projectRepository);
+        InOrder order = inOrder(versionRepository, applicationRepository, projectRepository);
+        order.verify(versionRepository).deleteAllByApplicationProjectId(1L);
         order.verify(applicationRepository).deleteAllByProjectId(1L);
         order.verify(projectRepository).delete(project);
     }
