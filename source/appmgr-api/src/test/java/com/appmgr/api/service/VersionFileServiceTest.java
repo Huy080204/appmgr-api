@@ -1,7 +1,10 @@
 package com.appmgr.api.service;
 
+import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
+import com.appmgr.api.dto.bundle.BundleFile;
 import com.appmgr.api.exception.BadRequestException;
+import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Version;
@@ -166,6 +169,101 @@ class VersionFileServiceTest {
                 .extracting("code")
                 .isEqualTo(ErrorCode.VERSION_ERROR_STORE_FILE_FAILED);
         assertThat(versionDir).doesNotExist();
+    }
+
+    @Test
+    void shouldReturnApkBundleFileWhenVersionDirHoldsExactlyOneApk() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path apk = Files.write(versionDir.resolve("app_1.0_10.apk"), new byte[]{1, 2, 3});
+
+        BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
+
+        assertThat(result.getPath().toRealPath()).isEqualTo(apk.toRealPath());
+        assertThat(result.getFileName()).isEqualTo("app_1.0_10.apk");
+        assertThat(result.getMediaType()).isEqualTo(BaseConstant.BUNDLE_MEDIA_TYPE_APK);
+    }
+
+    @Test
+    void shouldReturnTarGzBundleFileWhenVersionDirHoldsExactlyOneTarGz() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path tarGz = Files.write(versionDir.resolve("app_1.0_10.tar.gz"), new byte[]{1, 2, 3, 4, 5});
+
+        BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
+
+        assertThat(result.getPath().toRealPath()).isEqualTo(tarGz.toRealPath());
+        assertThat(result.getFileName()).isEqualTo("app_1.0_10.tar.gz");
+        assertThat(result.getMediaType()).isEqualTo(BaseConstant.BUNDLE_MEDIA_TYPE_TAR_GZ);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenVersionDirIsMissing() {
+        assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenVersionDirIsEmpty() throws IOException {
+        Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+
+        assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenVersionDirHoldsOnlyNonBundleFiles() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Files.write(versionDir.resolve(".DS_Store"), new byte[]{1});
+        Files.write(versionDir.resolve("notes.txt"), new byte[]{2});
+
+        assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldIgnoreNonBundleFileWhenItSitsNextToBundle() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Files.write(versionDir.resolve("notes.txt"), new byte[]{9});
+        Path apk = Files.write(versionDir.resolve("app_1.0_10.apk"), new byte[]{1, 2, 3});
+
+        BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
+
+        assertThat(result.getPath()).isEqualTo(apk);
+        assertThat(result.getFileName()).isEqualTo("app_1.0_10.apk");
+    }
+
+    @Test
+    void shouldAcceptBundleWhenExtensionIsUpperCase() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path apk = Files.write(versionDir.resolve("APP.APK"), new byte[]{1});
+
+        BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
+
+        assertThat(result.getPath()).isEqualTo(apk);
+        assertThat(result.getFileName()).isEqualTo("APP.APK");
+        assertThat(result.getMediaType()).isEqualTo(BaseConstant.BUNDLE_MEDIA_TYPE_APK);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenBundleNamedEntryIsDirectory() throws IOException {
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Files.createDirectories(versionDir.resolve("x.apk"));
+
+        assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenChannelNameIsHostile() {
+        Version version = savedBundleVersion();
+        version.getChannel().setName("../evil");
+
+        assertThatThrownBy(() -> versionFileService.resolveBundleFile(version))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
 
     private Version savedBundleVersion() {

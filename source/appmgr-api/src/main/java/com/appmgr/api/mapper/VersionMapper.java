@@ -1,5 +1,6 @@
 package com.appmgr.api.mapper;
 
+import com.appmgr.api.dto.bundle.CheckVersionDto;
 import com.appmgr.api.dto.version.VersionDto;
 import com.appmgr.api.form.version.CreateVersionForm;
 import com.appmgr.api.form.version.UpdateVersionForm;
@@ -64,4 +65,13 @@ public interface VersionMapper {
     @IterableMapping(elementTargetType = VersionDto.class, qualifiedByName = "fromEntityToVersionDto")
     @Named("fromEntityToVersionDtoList")
     List<VersionDto> fromEntitiesToDtoList(List<Version> versions);
+
+    @Mapping(source = "type", target = "type")
+    @Mapping(source = "versionCode", target = "versionCode")
+    @Mapping(source = "versionName", target = "versionName")
+    @Mapping(source = "minVersion", target = "minVersion")
+    @Mapping(source = "requiredUpdate", target = "requiredUpdate")
+    @Mapping(source = "urlBundle", target = "urlBundle")
+    @BeanMapping(ignoreByDefault = true)
+    CheckVersionDto fromEntityToCheckVersionDto(Version version);
 }

@@ -2,7 +2,9 @@ package com.appmgr.api.service;
 
 import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
+import com.appmgr.api.dto.bundle.BundleFile;
 import com.appmgr.api.exception.BadRequestException;
+import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Version;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +21,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
 public class VersionFileService {
-
-    private static final String EXTENSION_APK = "apk";
-    private static final String EXTENSION_TAR_GZ = "tar.gz";
 
     @Value("${file.upload-dir}")
     private String rootDirectory;
@@ -51,13 +52,36 @@ public class VersionFileService {
             return null;
         }
         String lowerName = originalFilename.toLowerCase(Locale.ROOT);
-        if (lowerName.endsWith("." + EXTENSION_TAR_GZ)) {
-            return EXTENSION_TAR_GZ;
+        if (lowerName.endsWith("." + BaseConstant.BUNDLE_EXTENSION_TAR_GZ)) {
+            return BaseConstant.BUNDLE_EXTENSION_TAR_GZ;
         }
-        if (lowerName.endsWith("." + EXTENSION_APK)) {
-            return EXTENSION_APK;
+        if (lowerName.endsWith("." + BaseConstant.BUNDLE_EXTENSION_APK)) {
+            return BaseConstant.BUNDLE_EXTENSION_APK;
         }
         return null;
+    }
+
+    public BundleFile resolveBundleFile(Version version) {
+        try {
+            Path versionDir = resolveVersionDir(version.getApplication().getId(), version.getChannel().getName(),
+                    version.getId());
+            try (Stream<Path> entries = Files.list(versionDir)) {
+                Optional<Path> bundle = entries
+                        .filter(entry -> Files.isRegularFile(entry)
+                                && resolveBundleExtension(entry.getFileName().toString()) != null)
+                        .findFirst();
+                if (bundle.isPresent()) {
+                    String fileName = bundle.get().getFileName().toString();
+                    String mediaType = BaseConstant.BUNDLE_EXTENSION_APK.equals(resolveBundleExtension(fileName))
+                            ? BaseConstant.BUNDLE_MEDIA_TYPE_APK
+                            : BaseConstant.BUNDLE_MEDIA_TYPE_TAR_GZ;
+                    return new BundleFile(bundle.get(), fileName, mediaType);
+                }
+            }
+        } catch (BadRequestException | IOException e) {
+            log.warn("[Bundle] Cannot resolve bundle: versionId={}", version.getId());
+        }
+        throw new NotFoundException("Bundle file not found", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
 
     public void storeVersionBundle(Version version, MultipartFile file) {
