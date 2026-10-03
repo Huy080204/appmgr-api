@@ -1,5 +1,7 @@
 package com.appmgr.api.constant;
 
+import java.util.List;
+
 public class BaseConstant {
     public static final String DEFAULT_TIMEZONE = "UTC";
 
@@ -27,6 +29,13 @@ public class BaseConstant {
     public static final Integer VERSION_TYPE_BUNDLE = 1;
     public static final Integer VERSION_TYPE_STORE = 2;
     public static final Integer VERSION_TYPE_OTA = 3;
+
+    public static final List<Integer> BUNDLE_VERSION_TYPES = List.of(VERSION_TYPE_BUNDLE, VERSION_TYPE_STORE);
+
+    public static final String BUNDLE_EXTENSION_APK = "apk";
+    public static final String BUNDLE_EXTENSION_TAR_GZ = "tar.gz";
+    public static final String BUNDLE_MEDIA_TYPE_APK = "application/vnd.android.package-archive";
+    public static final String BUNDLE_MEDIA_TYPE_TAR_GZ = "application/gzip";
 
     public static final String VERSION_FOLDER = "APP_VERSION";
     public static final String VERSION_DOWNLOAD_PATH = "/v1/bundle/download-version";
