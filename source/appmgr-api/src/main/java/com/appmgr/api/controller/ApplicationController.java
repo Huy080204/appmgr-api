@@ -14,6 +14,7 @@ import com.appmgr.api.model.Project;
 import com.appmgr.api.model.criteria.ApplicationCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
 import com.appmgr.api.repository.ProjectRepository;
+import com.appmgr.api.repository.VersionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -51,6 +52,9 @@ public class ApplicationController extends ABasicController {
 
     @Autowired
     private ApplicationMapper applicationMapper;
+
+    @Autowired
+    private VersionRepository versionRepository;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('APP_V')")
@@ -109,6 +113,7 @@ public class ApplicationController extends ABasicController {
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
+        versionRepository.deleteAllByApplicationId(id);
         applicationRepository.delete(application);
         return makeSuccessResponse("Delete application success");
     }
