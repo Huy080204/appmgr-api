@@ -25,4 +25,6 @@ public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpec
     Optional<Version> findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(Long id, Long applicationId, Long channelId, Integer type, Integer status);
 
     Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, Collection<Integer> types, Integer status);
+
+    Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, String runtimeVersion, Integer type, Integer status);
 }

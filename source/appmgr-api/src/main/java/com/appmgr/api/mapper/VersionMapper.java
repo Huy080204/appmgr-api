@@ -30,6 +30,19 @@ public interface VersionMapper {
     @Named("fromCreateVersionFormToEntity")
     Version fromCreateForm(CreateVersionForm createVersionForm);
 
+    @Mapping(source = "type", target = "type")
+    @Mapping(source = "application", target = "application")
+    @Mapping(source = "category", target = "category")
+    @Mapping(source = "channel", target = "channel")
+    @Mapping(source = "runtimeVersion", target = "runtimeVersion")
+    @Mapping(source = "versionCode", target = "versionCode")
+    @Mapping(source = "versionName", target = "versionName")
+    @Mapping(source = "minVersion", target = "minVersion")
+    @Mapping(source = "requiredUpdate", target = "requiredUpdate")
+    @BeanMapping(ignoreByDefault = true)
+    @Named("fromEntityToRepublishEntity")
+    Version fromEntityToRepublishEntity(Version source);
+
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
     @Mapping(source = "requiredUpdate", target = "requiredUpdate")

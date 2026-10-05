@@ -2,6 +2,7 @@ package com.appmgr.api.config;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.*;
@@ -21,7 +22,13 @@ public class SimpleCorsFilter implements Filter {
         response.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
         response.setHeader("Access-Control-Max-Age", "3600");
         response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, authorization, X-Client-Type");
+        response.setHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, "
+                        + "Access-Control-Request-Method, Access-Control-Request-Headers, authorization, X-Client-Type, "
+                        + "x-app-id, x-category-id, expo-channel-name, expo-platform, expo-runtime-version, "
+                        + "expo-current-update-id, expo-embedded-update-id, expo-protocol-version, "
+                        + "expo-expect-signature, expo-recent-failed-update-ids, expo-extra-params, "
+                        + "expo-json-error, expo-api-version");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "expo-protocol-version, expo-sfv-version, cache-control, content-type");
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
