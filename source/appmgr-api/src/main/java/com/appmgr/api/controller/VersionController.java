@@ -124,6 +124,22 @@ public class VersionController extends ABasicController {
         return makeSuccessResponse(versionMapper.fromEntityToVersionIdDto(version), "Create version success");
     }
 
+    @PostMapping(value = "/republish/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('VER_C')")
+    @Transactional
+    public ApiMessageDto<VersionDto> republish(@PathVariable Long id) {
+        Version source = versionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
+        if (!BaseConstant.VERSION_TYPE_OTA.equals(source.getType())) {
+            throw new BadRequestException("Only OTA version can be republished");
+        }
+        if (!BaseConstant.STATUS_ACTIVE.equals(source.getStatus())) {
+            throw new BadRequestException("Source version is not active");
+        }
+        Version version = otaService.republish(source);
+        return makeSuccessResponse(versionMapper.fromEntityToVersionIdDto(version), "Republish version success");
+    }
+
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('VER_U')")
     @Transactional

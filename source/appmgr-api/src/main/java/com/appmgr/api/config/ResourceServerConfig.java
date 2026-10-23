@@ -44,6 +44,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
                 .antMatchers("/v1/file/download/**").permitAll()
                 .antMatchers("/v1/*/public/**").permitAll()
                 .antMatchers("/v1/bundle/check-version", "/v1/bundle/download-version").permitAll()
+                .antMatchers("/v1/ota/manifest", "/v1/ota/assets/**").permitAll()
                 .antMatchers("/**").authenticated()
                 .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and().exceptionHandling().accessDeniedHandler(new OAuth2AccessDeniedHandler());

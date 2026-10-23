@@ -591,6 +591,69 @@ class VersionControllerTest {
         assertThat(result.getMessage()).isEqualTo("Get list success");
     }
 
+    @Test
+    void shouldRepublishVersionWhenSourceIsActiveOta() {
+        Version source = existingVersion(BaseConstant.VERSION_TYPE_OTA);
+        source.setStatus(BaseConstant.STATUS_ACTIVE);
+        Version republished = existingVersion(BaseConstant.VERSION_TYPE_OTA);
+        republished.setId(9L);
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(source));
+        when(otaService.republish(source)).thenReturn(republished);
+
+        ApiMessageDto<VersionDto> result = controller.republish(5L);
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getData().getId()).isEqualTo(9L);
+        assertThat(result.getMessage()).isEqualTo("Republish version success");
+        verify(otaService).republish(source);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenRepublishingMissingVersion() {
+        when(versionRepository.findById(5L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.republish(5L))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
+        verify(otaService, never()).republish(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRepublishingBundleVersion() {
+        Version source = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
+        source.setStatus(BaseConstant.STATUS_ACTIVE);
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> controller.republish(5L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", null);
+        verify(otaService, never()).republish(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRepublishingLockedOtaVersion() {
+        Version source = existingVersion(BaseConstant.VERSION_TYPE_OTA);
+        source.setStatus(BaseConstant.STATUS_LOCK);
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> controller.republish(5L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", null);
+        verify(otaService, never()).republish(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRepublishingPendingOtaVersion() {
+        Version source = existingVersion(BaseConstant.VERSION_TYPE_OTA);
+        source.setStatus(BaseConstant.STATUS_PENDING);
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> controller.republish(5L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", null);
+        verify(otaService, never()).republish(any());
+    }
+
     private static <T> Set<ConstraintViolation<T>> validate(T form) {
         try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
             return factory.getValidator().validate(form);

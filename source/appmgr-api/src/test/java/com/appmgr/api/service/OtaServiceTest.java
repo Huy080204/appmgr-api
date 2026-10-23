@@ -4,9 +4,14 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.model.Application;
+import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
+import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Version;
+import org.mapstruct.factory.Mappers;
 import com.appmgr.api.repository.VersionRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,14 +56,17 @@ class OtaServiceTest {
     @Mock private VersionRepository versionRepository;
 
     private Path root;
+    private VersionFileService versionFileService;
     private OtaService otaService;
 
     @BeforeEach
     void setUp() throws IOException {
         root = Files.createDirectories(tempDir.resolve("root"));
-        VersionFileService versionFileService = new VersionFileService();
+        versionFileService = spy(new VersionFileService());
         ReflectionTestUtils.setField(versionFileService, "rootDirectory", root.toString());
         otaService = new OtaService();
+        ReflectionTestUtils.setField(otaService, "objectMapper", new ObjectMapper());
+        ReflectionTestUtils.setField(otaService, "versionMapper", Mappers.getMapper(VersionMapper.class));
         ReflectionTestUtils.setField(otaService, "versionRepository", versionRepository);
         ReflectionTestUtils.setField(otaService, "versionFileService", versionFileService);
     }
@@ -147,6 +156,45 @@ class OtaServiceTest {
     }
 
     @Test
+    void shouldExtractIntoSubfoldersWhenEntryNamesUseBackslashes() throws IOException {
+        stubSaveAssignsId();
+        byte[] hbc = new byte[]{9, 8, 7};
+        byte[] asset = new byte[]{4, 5, 6};
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("metadata.json", "{}".getBytes(StandardCharsets.UTF_8));
+        entries.put("assets\\", new byte[0]);
+        entries.put("assets\\def", asset);
+        entries.put("_expo\\static\\js\\android\\index-abc.hbc", hbc);
+        MockMultipartFile file = zipFile("ota.zip", entries);
+
+        otaService.publish(version(), file);
+
+        Path versionDir = versionDir();
+        assertThat(versionDir.resolve("assets")).isDirectory();
+        assertThat(Files.readAllBytes(versionDir.resolve("assets/def"))).isEqualTo(asset);
+        assertThat(Files.readAllBytes(versionDir.resolve("_expo/static/js/android/index-abc.hbc"))).isEqualTo(hbc);
+        try (Stream<Path> all = Files.walk(versionDir)) {
+            assertThat(all.filter(p -> p.getFileName().toString().contains("\\")).count()).isZero();
+        }
+    }
+
+    @Test
+    void shouldThrowZipEntryInvalidWhenEntryIsZipSlipWithBackslashes() throws IOException {
+        stubSaveAssignsId();
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("metadata.json", "{}".getBytes(StandardCharsets.UTF_8));
+        entries.put("..\\evil.txt", "evil".getBytes(StandardCharsets.UTF_8));
+        MockMultipartFile file = zipFile("ota.zip", entries);
+
+        assertThatThrownBy(() -> otaService.publish(version(), file))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
+        try (Stream<Path> all = Files.walk(tempDir)) {
+            assertThat(all.filter(p -> p.getFileName().toString().contains("evil")).count()).isZero();
+        }
+    }
+
+    @Test
     void shouldDeletePartialDirWhenExtractionFails() throws IOException {
         stubSaveAssignsId();
         Map<String, byte[]> entries = new LinkedHashMap<>();
@@ -202,6 +250,126 @@ class OtaServiceTest {
         assertThatThrownBy(() -> otaService.publish(version(), file))
                 .isInstanceOf(BadRequestException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
+    }
+
+    @Test
+    void shouldCopyEveryFileAndStampMetadataWhenRepublishingSource() throws IOException, NoSuchAlgorithmException {
+        stubSaveAssignsNewId();
+        byte[] metadata = "{\"version\":0,\"bundler\":\"metro\"}".getBytes(StandardCharsets.UTF_8);
+        byte[] hbc = new byte[]{9, 8, 7};
+        byte[] asset = new byte[]{4, 5, 6};
+        Path sourceDir = sourceDir();
+        writeFile(sourceDir.resolve("metadata.json"), metadata);
+        writeFile(sourceDir.resolve("_expo/static/js/android/index-abc.hbc"), hbc);
+        writeFile(sourceDir.resolve("assets/0f1e2d"), asset);
+        Version source = sourceVersion();
+
+        Version result = otaService.republish(source);
+
+        Path targetDir = versionDir(6L);
+        JsonNode copied = new ObjectMapper().readTree(Files.readAllBytes(targetDir.resolve("metadata.json")));
+        assertThat(result.getId()).isEqualTo(6L);
+        assertThat(Files.readAllBytes(targetDir.resolve("_expo/static/js/android/index-abc.hbc"))).isEqualTo(hbc);
+        assertThat(Files.readAllBytes(targetDir.resolve("assets/0f1e2d"))).isEqualTo(asset);
+        assertThat(Files.readAllBytes(sourceDir.resolve("metadata.json"))).isEqualTo(metadata);
+        assertThat(copied.get("version").asInt()).isZero();
+        assertThat(copied.get("bundler").asText()).isEqualTo("metro");
+        assertThat(copied.get("_republishedFrom").asText()).isEqualTo("5");
+        assertThat(copied.get("_republishedAt").asText()).isEqualTo(String.valueOf(result.getTimestamp()));
+        assertThat(result.getManifestId())
+                .matches(UUID_REGEX)
+                .isNotEqualTo(expectedManifestId(metadata))
+                .isEqualTo(expectedManifestId(Files.readAllBytes(targetDir.resolve("metadata.json"))));
+        verify(versionRepository, times(2)).save(any(Version.class));
+    }
+
+    @Test
+    void shouldCopySourceFieldsToNewVersionWhenRepublishing() throws IOException {
+        stubSaveAssignsNewId();
+        writeFile(sourceDir().resolve("metadata.json"), "{}".getBytes(StandardCharsets.UTF_8));
+        Version source = sourceVersion();
+
+        Version result = otaService.republish(source);
+
+        assertThat(result).isNotSameAs(source);
+        assertThat(result.getType()).isEqualTo(BaseConstant.VERSION_TYPE_OTA);
+        assertThat(result.getApplication()).isSameAs(source.getApplication());
+        assertThat(result.getCategory()).isSameAs(source.getCategory());
+        assertThat(result.getChannel()).isSameAs(source.getChannel());
+        assertThat(result.getRuntimeVersion()).isEqualTo("1.0");
+        assertThat(result.getVersionCode()).isEqualTo(10);
+        assertThat(result.getVersionName()).isEqualTo("1.0.0");
+        assertThat(result.getMinVersion()).isEqualTo(3);
+        assertThat(result.getRequiredUpdate()).isTrue();
+        assertThat(result.getTimestamp()).isNotNull();
+    }
+
+    @Test
+    void shouldThrowMetadataNotFoundBeforeSavingWhenSourceHasNoMetadata() throws IOException {
+        Files.createDirectories(sourceDir());
+
+        assertThatThrownBy(() -> otaService.republish(sourceVersion()))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_METADATA_NOT_FOUND);
+        verify(versionRepository, never()).save(any(Version.class));
+    }
+
+    @Test
+    void shouldDeleteTargetDirWhenCopiedMetadataIsNotJsonObject() throws IOException {
+        stubSaveAssignsNewId();
+        writeFile(sourceDir().resolve("metadata.json"), "[]".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> otaService.republish(sourceVersion()))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_STORE_FILE_FAILED);
+        verify(versionFileService).deleteVersionDir(versionDir(6L));
+        assertThat(versionDir(6L)).doesNotExist();
+    }
+
+    @Test
+    void shouldDeleteTargetDirWhenCopiedMetadataIsUnreadable() throws IOException {
+        stubSaveAssignsNewId();
+        writeFile(sourceDir().resolve("metadata.json"), "not json".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> otaService.republish(sourceVersion()))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_STORE_FILE_FAILED);
+        verify(versionFileService).deleteVersionDir(versionDir(6L));
+        assertThat(versionDir(6L)).doesNotExist();
+    }
+
+    private void stubSaveAssignsNewId() {
+        when(versionRepository.save(any(Version.class))).thenAnswer(invocation -> {
+            Version version = invocation.getArgument(0);
+            if (version.getId() == null) {
+                version.setId(6L);
+            }
+            return version;
+        });
+    }
+
+    private Path sourceDir() {
+        return versionDir(5L);
+    }
+
+    private Path versionDir(Long id) {
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("prod").resolve(String.valueOf(id));
+    }
+
+    private static void writeFile(Path file, byte[] content) throws IOException {
+        Files.createDirectories(file.getParent());
+        Files.write(file, content);
+    }
+
+    private Version sourceVersion() {
+        Version source = version();
+        source.setId(5L);
+        source.setCategory(new Category());
+        source.setRuntimeVersion("1.0");
+        source.setMinVersion(3);
+        source.setRequiredUpdate(true);
+        source.setManifestId("old-manifest");
+        return source;
     }
 
     private void stubSaveAssignsId() {
