@@ -2,21 +2,23 @@ package com.appmgr.api.model.criteria;
 
 import com.appmgr.api.model.Application;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 public class ApplicationCriteria implements Serializable {
 
     private Long id;
@@ -40,7 +42,7 @@ public class ApplicationCriteria implements Serializable {
                     predicates.add(cb.equal(root.get("status"), getStatus()));
                 }
 
-                if (!StringUtils.isEmpty(getName())) {
+                if (StringUtils.hasText(getName())) {
                     predicates.add(cb.like(cb.lower(root.get("name")), "%" + getName().toLowerCase() + "%"));
                 }
 

@@ -3,12 +3,14 @@ package com.appmgr.api.form.channel;
 import com.appmgr.api.form.StringToLongDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class UpdateChannelForm {
     @NotNull(message = "id cannot be null")

@@ -2,9 +2,11 @@ package com.appmgr.api.dto.project;
 
 import com.appmgr.api.dto.ABasicAdminDto;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class ProjectDto extends ABasicAdminDto {
     @Schema(name = "name")

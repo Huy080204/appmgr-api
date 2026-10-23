@@ -5,9 +5,11 @@ import com.appmgr.api.dto.application.ApplicationDto;
 import com.appmgr.api.dto.category.CategoryDto;
 import com.appmgr.api.dto.channel.ChannelDto;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class VersionDto extends ABasicAdminDto {
 

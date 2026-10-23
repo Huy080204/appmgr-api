@@ -1,13 +1,15 @@
 package com.appmgr.api.jwt;
 
 import com.appmgr.api.utils.ZipUtils;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
 
 @Slf4j
-@Data
+@Getter
+@Setter
 public class BaseJwt implements Serializable {
     public static final String DELIM = "\\|";
     public static final String EMPTY_STRING = "<>";

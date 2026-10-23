@@ -25,7 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,13 +34,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Objects;
 
 @RestController
 @RequestMapping("/v1/project")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class ProjectController extends ABasicController {
     @Autowired
@@ -57,7 +55,7 @@ public class ProjectController extends ABasicController {
     private VersionRepository versionRepository;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('PRO_V')")
+//    @PreAuthorize("hasRole('PRO_V')")
     public ApiMessageDto<ProjectDto> get(@PathVariable Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found project!", ErrorCode.PROJECT_ERROR_NOT_FOUND));
@@ -65,7 +63,7 @@ public class ProjectController extends ABasicController {
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('PRO_L')")
+//    @PreAuthorize("hasRole('PRO_L')")
     public ApiMessageDto<ResponseListDto<List<ProjectDto>>> list(ProjectCriteria projectCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Project> page = projectRepository.findAll(projectCriteria.getCriteria(), pageable);
         ResponseListDto<List<ProjectDto>> responseListDto =
@@ -74,7 +72,7 @@ public class ProjectController extends ABasicController {
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('PRO_C')")
+//    @PreAuthorize("hasRole('PRO_C')")
     @Transactional
     public ApiMessageDto<ProjectDto> create(@Valid @RequestBody CreateProjectForm createProjectForm, BindingResult bindingResult) {
         if (projectRepository.existsByName(createProjectForm.getName())) {
@@ -87,7 +85,7 @@ public class ProjectController extends ABasicController {
     }
 
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('PRO_U')")
+//    @PreAuthorize("hasRole('PRO_U')")
     @Transactional
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateProjectForm updateProjectForm, BindingResult bindingResult) {
         Project project = projectRepository.findById(updateProjectForm.getId())
@@ -103,7 +101,7 @@ public class ProjectController extends ABasicController {
     }
 
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('PRO_D')")
+//    @PreAuthorize("hasRole('PRO_D')")
     @Transactional
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Project project = projectRepository.findById(id)

@@ -1,14 +1,11 @@
 package com.appmgr.api.config;
 
-import org.springdoc.core.GroupedOpenApi;
 import org.springdoc.core.customizers.ServerBaseUrlCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -34,12 +31,8 @@ public class SwaggerConfig {
      */
     @Bean
     public ServerBaseUrlCustomizer swaggerUiHttpsServerUrl() {
-        return serverBaseUrl -> {
-            RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-            if (!(attributes instanceof ServletRequestAttributes)) {
-                return serverBaseUrl;
-            }
-            String referer = ((ServletRequestAttributes) attributes).getRequest().getHeader(HttpHeaders.REFERER);
+        return (serverBaseUrl, request) -> {
+            String referer = request.getHeaders().getFirst(HttpHeaders.REFERER);
             if (referer == null || !referer.contains(SWAGGER_UI_PATH)) {
                 return serverBaseUrl;
             }

@@ -3,8 +3,8 @@ package com.appmgr.api.validation.impl;
 import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.validation.GroupKind;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import java.util.Objects;
 
 public class GroupKindValidation implements ConstraintValidator<GroupKind, Integer> {

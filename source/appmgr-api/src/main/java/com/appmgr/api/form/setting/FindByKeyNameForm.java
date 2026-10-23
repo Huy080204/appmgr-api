@@ -1,20 +1,17 @@
 package com.appmgr.api.form.setting;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Getter
 @Setter
 @Schema
 public class FindByKeyNameForm {
-    @Schema(name = "keyNames")
-    private String[] keyNames;
-
-    public List<String> getKeyNames() {
-        return Arrays.asList(keyNames);
-    }
+    @NotEmpty(message = "keyNames cannot be empty")
+    @Schema(name = "keyNames", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<String> keyNames;
 }

@@ -11,20 +11,25 @@ import com.appmgr.api.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import com.appmgr.api.form.ErrorForm;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 @RestController
@@ -44,7 +49,41 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleNoHandlerFoundException(NoHandlerFoundException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
+    protected ResponseEntity<Object> handleNoHandlerFoundException(NoHandlerFoundException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return notFoundResponse();
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return notFoundResponse();
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        List<ErrorForm> errorForms = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> new ErrorForm(error.getField(), error.getDefaultMessage()))
+                .collect(Collectors.toList());
+        ApiMessageDto<List<ErrorForm>> apiMessageDto = new ApiMessageDto<>();
+        apiMessageDto.setCode("ERROR");
+        apiMessageDto.setResult(false);
+        apiMessageDto.setData(errorForms);
+        apiMessageDto.setMessage(errorForms.stream()
+                .map(error -> error.getField() + ": " + error.getMessage())
+                .collect(Collectors.joining(", ")));
+        return new ResponseEntity<>(apiMessageDto, HttpStatus.BAD_REQUEST);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        log.error(ex.getMessage(), ex);
+        ApiMessageDto<String> apiMessageDto = new ApiMessageDto<>();
+        apiMessageDto.setCode("ERROR");
+        apiMessageDto.setResult(false);
+        apiMessageDto.setMessage("Malformed request body");
+        return new ResponseEntity<>(apiMessageDto, HttpStatus.BAD_REQUEST);
+    }
+
+    private ResponseEntity<Object> notFoundResponse() {
         ApiMessageDto<String> apiMessageDto = new ApiMessageDto<>();
         apiMessageDto.setCode("ERROR handleNoHandlerFoundException");
         apiMessageDto.setResult(false);

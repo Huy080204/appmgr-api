@@ -4,7 +4,7 @@ import com.appmgr.api.exception.BadRequestException;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
-import javax.persistence.metamodel.*;
+import jakarta.persistence.metamodel.*;
 import java.util.*;
 import java.util.stream.Collectors;
 

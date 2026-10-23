@@ -1,0 +1,121 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="Authentication" id="1792720716846-1">
+        <createTable tableName="db_application">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="db_applicationPK"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="description" type="TEXT"/>
+            <column name="project_id" type="BIGINT"/>
+            <column name="created_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-2">
+        <createTable tableName="db_channel">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="db_channelPK"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="created_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-3">
+        <createTable tableName="db_project">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="db_projectPK"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="description" type="TEXT"/>
+            <column name="created_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-4">
+        <createTable tableName="db_version">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="db_versionPK"/>
+            </column>
+            <column name="manifest_id" type="VARCHAR(255)"/>
+            <column name="min_version" type="INT"/>
+            <column name="required_update" type="BIT"/>
+            <column name="runtime_version" type="VARCHAR(255)"/>
+            <column name="timestamp" type="BIGINT"/>
+            <column name="type" type="INT"/>
+            <column name="url_bundle" type="VARCHAR(255)"/>
+            <column name="version_code" type="INT"/>
+            <column name="version_name" type="VARCHAR(255)"/>
+            <column name="application_id" type="BIGINT"/>
+            <column name="category_id" type="BIGINT"/>
+            <column name="channel_id" type="BIGINT"/>
+            <column name="created_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_date" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-5">
+        <addForeignKeyConstraint baseColumnNames="application_id" baseTableName="db_version" constraintName="FK22wf2auf4c2ohxjw6qekx3gy1" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_application" validate="true"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-6">
+        <addForeignKeyConstraint baseColumnNames="channel_id" baseTableName="db_version" constraintName="FK67c5gjwnmviopx7yof8ktq7uu" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_channel" validate="true"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-7">
+        <addForeignKeyConstraint baseColumnNames="category_id" baseTableName="db_version" constraintName="FK7wv5xkoyq4ctlifjnsyuof7ic" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_category" validate="true"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-8">
+        <addForeignKeyConstraint baseColumnNames="project_id" baseTableName="db_application" constraintName="FKe1dj9n0xfto5h06gxel9co887" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_project" validate="true"/>
+    </changeSet>
+</databaseChangeLog>

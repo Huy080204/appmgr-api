@@ -1,9 +1,11 @@
 package com.appmgr.api.dto.account;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class AccountMfaDto {
     @Schema(name = "isMfaEnable")

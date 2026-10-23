@@ -4,8 +4,8 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.validation.EmailConstraint;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class EmailValidation implements ConstraintValidator<EmailConstraint, String> {
     private boolean allowNull;

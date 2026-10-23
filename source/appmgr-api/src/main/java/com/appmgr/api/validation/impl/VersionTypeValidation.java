@@ -3,8 +3,8 @@ package com.appmgr.api.validation.impl;
 import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.validation.VersionType;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class VersionTypeValidation implements ConstraintValidator<VersionType, Integer> {
     private boolean allowNull;

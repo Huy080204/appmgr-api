@@ -4,13 +4,15 @@ import com.appmgr.api.form.StringToLongDeserializer;
 import com.appmgr.api.validation.VersionType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class CreateVersionForm {
     @NotNull(message = "applicationId cannot be null")

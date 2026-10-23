@@ -30,7 +30,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.HandlerMapping;
-import org.springframework.web.util.NestedServletException;
+
+import jakarta.servlet.ServletException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -404,7 +405,7 @@ class OtaControllerTest {
         MockMvc mockMvc = buildMockMvc();
 
         assertThatThrownBy(() -> mockMvc.perform(get("/v1/ota/assets/10/prod/555/assets/def")))
-                .isInstanceOf(NestedServletException.class)
+                .isInstanceOf(ServletException.class)
                 .satisfies(ex -> assertThat(ex.getCause())
                         .isInstanceOf(NotFoundException.class)
                         .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND));

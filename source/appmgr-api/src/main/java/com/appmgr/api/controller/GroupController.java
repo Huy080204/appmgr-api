@@ -27,14 +27,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 @RestController
 @RequestMapping("/v1/group")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class GroupController extends ABasicController {
     @Autowired
