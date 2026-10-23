@@ -2,19 +2,21 @@ package com.appmgr.api.model.criteria;
 
 import com.appmgr.api.model.Account;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 public class AccountCriteria implements Serializable {
     private static final long serialVersionUID = 1L;
     private Long id;
@@ -43,13 +45,13 @@ public class AccountCriteria implements Serializable {
                 if (getStatus() != null) {
                     predicates.add(cb.equal(root.get("status"), getStatus()));
                 }
-                if (!StringUtils.isEmpty(getUsername())) {
+                if (StringUtils.hasText(getUsername())) {
                     predicates.add(cb.like(cb.lower(root.get("username")), "%" + getUsername().toLowerCase() + "%"));
                 }
-                if (!StringUtils.isEmpty(getEmail())) {
+                if (StringUtils.hasText(getEmail())) {
                     predicates.add(cb.like(cb.lower(root.get("email")), "%" + getEmail().toLowerCase() + "%"));
                 }
-                if (!StringUtils.isEmpty(getFullName())) {
+                if (StringUtils.hasText(getFullName())) {
                     predicates.add(cb.like(cb.lower(root.get("fullName")), "%" + getFullName().toLowerCase() + "%"));
                 }
                 return cb.and(predicates.toArray(new Predicate[predicates.size()]));

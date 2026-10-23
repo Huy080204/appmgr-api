@@ -1,12 +1,14 @@
 package com.appmgr.api.dto;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 import java.io.Serializable;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 public class ApiResponse<T> implements Serializable {
 

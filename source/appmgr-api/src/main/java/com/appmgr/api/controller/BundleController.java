@@ -18,21 +18,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/v1/bundle")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class BundleController extends ABasicController {
     @Autowired
@@ -87,7 +85,7 @@ public class BundleController extends ABasicController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(file.getMediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(file.getFileName(), StandardCharsets.UTF_8).build().toString())
+                        "attachment; filename*=UTF-8''" + UriUtils.encode(file.getFileName(), StandardCharsets.UTF_8))
                 .body(new FileSystemResource(file.getPath()));
     }
 }

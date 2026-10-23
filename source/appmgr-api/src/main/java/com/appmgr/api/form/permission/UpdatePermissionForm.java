@@ -3,12 +3,14 @@ package com.appmgr.api.form.permission;
 import com.appmgr.api.form.StringToLongDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
-@Data
+@Getter
+@Setter
 public class UpdatePermissionForm {
     @NotNull(message = "id cant not be null")
     @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)

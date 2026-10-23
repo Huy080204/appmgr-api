@@ -23,7 +23,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,13 +32,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Objects;
 
 @RestController
 @RequestMapping("/v1/channel")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class ChannelController extends ABasicController {
     @Autowired
@@ -49,7 +47,7 @@ public class ChannelController extends ABasicController {
     private ChannelMapper channelMapper;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('CHN_V')")
+//    @PreAuthorize("hasRole('CHN_V')")
     public ApiMessageDto<ChannelDto> get(@PathVariable Long id) {
         Channel channel = channelRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
@@ -57,7 +55,7 @@ public class ChannelController extends ABasicController {
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('CHN_L')")
+//    @PreAuthorize("hasRole('CHN_L')")
     public ApiMessageDto<ResponseListDto<List<ChannelDto>>> list(ChannelCriteria channelCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Channel> page = channelRepository.findAll(channelCriteria.getCriteria(), pageable);
         ResponseListDto<List<ChannelDto>> responseListDto =
@@ -75,7 +73,7 @@ public class ChannelController extends ABasicController {
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('CHN_C')")
+//    @PreAuthorize("hasRole('CHN_C')")
     @Transactional
     public ApiMessageDto<ChannelDto> create(@Valid @RequestBody CreateChannelForm createChannelForm, BindingResult bindingResult) {
         if (channelRepository.existsByName(createChannelForm.getName())) {
@@ -87,7 +85,7 @@ public class ChannelController extends ABasicController {
     }
 
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('CHN_U')")
+//    @PreAuthorize("hasRole('CHN_U')")
     @Transactional
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateChannelForm updateChannelForm, BindingResult bindingResult) {
         Channel channel = channelRepository.findById(updateChannelForm.getId())
@@ -102,7 +100,7 @@ public class ChannelController extends ABasicController {
     }
 
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('CHN_D')")
+//    @PreAuthorize("hasRole('CHN_D')")
     @Transactional
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Channel channel = channelRepository.findById(id)

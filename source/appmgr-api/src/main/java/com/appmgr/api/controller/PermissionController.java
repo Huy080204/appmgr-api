@@ -21,12 +21,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/v1/permission")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class PermissionController extends ABasicController {
     @Autowired

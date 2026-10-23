@@ -3,8 +3,8 @@ package com.appmgr.api.validation.impl;
 import com.appmgr.api.validation.UsernameConstraint;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class UsernameValidation implements ConstraintValidator<UsernameConstraint, String> {
     private boolean allowNull;

@@ -8,6 +8,7 @@ public class BaseConstant {
     public static final String DATE_FORMAT = "dd/MM/yyyy";
     public static final String DATE_TIME_FORMAT = "dd/MM/yyyy HH:mm:ss";
     public static final String AUTHORIZATION_HEADER = "Authorization";
+    public static final String BEARER_TYPE = "Bearer";
 
     public static final String HEADER_CLIENT_TYPE = "X-Client-Type";
     public static final String HEADER_CLIENT_TYPE_WEB = "WEB";

@@ -26,12 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/v1/setting")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 public class SettingController extends ABasicController {
     @Autowired
@@ -88,13 +87,13 @@ public class SettingController extends ABasicController {
     }
 
     @GetMapping(value = "/find-by-key", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ApiMessageDto<List<SettingDto>> findByKey(FindByKeyNameForm findByKeyNameForm) {
+    public ApiMessageDto<List<SettingDto>> findByKey(@Valid FindByKeyNameForm findByKeyNameForm) {
         List<Setting> settings = settingRepository.findByKeyNames(findByKeyNameForm.getKeyNames(), false);
         return makeSuccessResponse(settingMapper.fromEntityToSettingDtoList(settings), "Find key name success");
     }
 
     @GetMapping(value = "/find-by-group", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ApiMessageDto<List<SettingDto>> findByGroup(FindByGroupNameForm findByGroupNameForm) {
+    public ApiMessageDto<List<SettingDto>> findByGroup(@Valid FindByGroupNameForm findByGroupNameForm) {
         List<Setting> settings = settingRepository.findByGroupNames(findByGroupNameForm.getGroupNames(), false);
         return makeSuccessResponse(settingMapper.fromEntityToSettingDtoList(settings), "Find group name success");
     }

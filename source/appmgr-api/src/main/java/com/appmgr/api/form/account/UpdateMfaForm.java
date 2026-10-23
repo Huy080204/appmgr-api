@@ -3,11 +3,13 @@ package com.appmgr.api.form.account;
 import com.appmgr.api.form.StringToLongDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
-@Data
+@Getter
+@Setter
 @Schema
 public class UpdateMfaForm {
     @NotNull(message = "id cannot be null")

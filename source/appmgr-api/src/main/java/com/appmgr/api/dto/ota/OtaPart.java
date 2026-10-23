@@ -1,9 +1,11 @@
 package com.appmgr.api.dto.ota;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 public class OtaPart {
     private String name;

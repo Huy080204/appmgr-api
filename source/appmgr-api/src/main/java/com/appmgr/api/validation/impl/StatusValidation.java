@@ -4,8 +4,8 @@ package com.appmgr.api.validation.impl;
 import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.validation.StatusConstraint;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import java.util.Objects;
 
 public class StatusValidation implements ConstraintValidator<StatusConstraint, Integer> {

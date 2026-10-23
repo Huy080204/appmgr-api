@@ -60,7 +60,7 @@ def buildDev(){
     if (_BRANCH_NAME.matches(TARTGET_BRANCH_DEPLOY)) {
 
         stage("Build source") {
-            def jdkHome = tool name: 'jdk11', type: 'jdk'
+            def jdkHome = tool name: 'jdk21', type: 'jdk'
             withEnv( ["PATH+MAVEN=/usr/bin", "JAVA_HOME=${jdkHome}", "PATH+JDK=${jdkHome}/bin"] ) {
                 sh """
                     java -version

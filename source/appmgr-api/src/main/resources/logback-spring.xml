@@ -4,15 +4,10 @@
     <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}/}spring.log}"/>
     <springProfile name="local">
         <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
-        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder>
-                <pattern>${FILE_LOG_PATTERN}</pattern>
-            </encoder>
-        </appender>
         <logger name="org.springframework" level="INFO"/>
         <logger name="com.appmgr.api" level="DEBUG"/>
         <root level="DEBUG">
-            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 

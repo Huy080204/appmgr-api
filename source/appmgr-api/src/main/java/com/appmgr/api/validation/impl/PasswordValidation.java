@@ -4,8 +4,8 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.validation.PasswordConstraint;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class PasswordValidation implements ConstraintValidator<PasswordConstraint, String> {
     private boolean allowNull;

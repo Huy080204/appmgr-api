@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -184,7 +185,7 @@ class SettingControllerTest {
     @Test
     void shouldReturnSettingListWhenFindByKeyCalled() {
         FindByKeyNameForm form = new FindByKeyNameForm();
-        form.setKeyNames(new String[]{"key"});
+        form.setKeyNames(Arrays.asList("key"));
         List<Setting> settings = Collections.singletonList(new Setting());
         List<SettingDto> dtoList = Collections.singletonList(new SettingDto());
         when(settingRepository.findByKeyNames(form.getKeyNames(), false)).thenReturn(settings);
@@ -200,7 +201,7 @@ class SettingControllerTest {
     @Test
     void shouldReturnSettingListWhenFindByGroupCalled() {
         FindByGroupNameForm form = new FindByGroupNameForm();
-        form.setGroupNames(new String[]{"group"});
+        form.setGroupNames(Arrays.asList("group"));
         List<Setting> settings = Collections.singletonList(new Setting());
         List<SettingDto> dtoList = Collections.singletonList(new SettingDto());
         when(settingRepository.findByGroupNames(form.getGroupNames(), false)).thenReturn(settings);

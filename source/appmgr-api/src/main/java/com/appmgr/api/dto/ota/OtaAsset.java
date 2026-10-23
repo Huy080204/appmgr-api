@@ -1,10 +1,12 @@
 package com.appmgr.api.dto.ota;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.core.io.Resource;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 public class OtaAsset {
     private Resource resource;

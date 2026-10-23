@@ -3,15 +3,17 @@ package com.appmgr.api.model.criteria;
 import com.appmgr.api.model.Group;
 import com.appmgr.api.model.Permission;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.jpa.domain.Specification;
 
-import javax.persistence.criteria.*;
+import jakarta.persistence.criteria.*;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 public class PermissionCriteria implements Serializable {
     private Integer groupKind;
 

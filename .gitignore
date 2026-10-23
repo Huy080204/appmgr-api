@@ -35,9 +35,14 @@ source/appmgr-api/logs
 source/appmgr-api/.idea
 source/appmgr-api/*.iml
 
-# Vibe Setting
+### Vibe Setting ###
 .claude
 vibe_setting.json
-ai-setup
-ai-setup.ps1
 bash.exe.stackdump
+# tech-stack-vault managed (downloaded by itzaisetup)
+.claude/docs/
+.claude/rules/
+.claude/skills/
+.claude/.tllq-techstack.json
+# tllq kit rules (installed by itzaisetup)
+.claude/rules/tllq/
