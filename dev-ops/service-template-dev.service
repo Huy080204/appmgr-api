@@ -6,7 +6,7 @@ After=network.target
 User=root
 WorkingDirectory={CONFIG_LOCATION}
 
-ExecStart=/usr/bin/java -Dfile.encoding=UTF-8 -Djava.security.egd=file:/dev/./urandom -Dspring.profiles.active={ENV} -jar app.jar --server.address=0.0.0.0
+ExecStart=/usr/lib/jvm/temurin-21-jdk-amd64/bin/java -Dfile.encoding=UTF-8 -Djava.security.egd=file:/dev/./urandom -Dspring.profiles.active={ENV} -jar app.jar --server.address=0.0.0.0
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier={APP_ID}
