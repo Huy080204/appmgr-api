@@ -32,8 +32,8 @@ public class SecurityConfig {
             "/v1/setting/find-by-key", "/v1/setting/find-by-group", "/v1/setting/public",
             "/v1/file/download/**",
             "/v1/*/public/**",
-            "/v1/bundle/check-version", "/v1/bundle/download-version",
-            "/v1/ota/manifest", "/v1/ota/assets/**"
+            "/v1/bundle/check-version/**", "/v1/bundle/download-version/**",
+            "/v1/ota/manifest/**", "/v1/ota/assets/**"
     };
 
     @Autowired
