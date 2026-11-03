@@ -4,7 +4,6 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.ota.OtaAsset;
 import com.appmgr.api.dto.ota.OtaPart;
-import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Version;
@@ -59,11 +58,11 @@ public class OtaSigningService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${server.uri:}")
+    @Value("${server.uri}")
     private String serverUri;
-    @Value("${ota.private-key-path:}")
-    private String privateKeyPath;
-    @Value("${ota.key-id:main}")
+    @Value("${ota.private.key}")
+    private String privateKeyPem;
+    @Value("${ota.key-id}")
     private String keyId;
 
     private PrivateKey privateKey;
@@ -73,14 +72,14 @@ public class OtaSigningService {
         privateKey = loadPrivateKey();
     }
 
-    public OtaPart buildManifest(Version version, Long appId, String channelName, String platform) {
-        Path versionDir = versionFileService.resolveVersionDir(appId, channelName, version.getId());
+    public OtaPart buildManifest(Version version, Long appId, Long channelId, String platform) {
+        Path versionDir = versionFileService.resolveVersionDir(appId, channelId, version.getId());
         JsonNode platformNode = readFileMetadata(versionDir).path(platform);
         if (!platformNode.isObject()) {
             throw new NotFoundException("Platform not found", ErrorCode.VERSION_ERROR_NOT_FOUND);
         }
         String assetBaseUrl = serverUri + BaseConstant.OTA_ASSETS_PATH + "/" + appId + "/"
-                + UriUtils.encodePathSegment(channelName, StandardCharsets.UTF_8) + "/" + version.getId() + "/";
+                + channelId + "/" + version.getId() + "/";
         List<Map<String, Object>> assets = new ArrayList<>();
         for (JsonNode asset : platformNode.path("assets")) {
             String extension = toExtension(asset);
@@ -106,20 +105,16 @@ public class OtaSigningService {
         return sign(BaseConstant.OTA_PART_DIRECTIVE, toJson(directive));
     }
 
-    public OtaAsset resolveAsset(String appId, String channelName, String versionId, String filePath) {
+    public OtaAsset resolveAsset(String appId, String channelId, String versionId, String filePath) {
         Long applicationId = parseId(appId);
+        Long parsedChannelId = parseId(channelId);
         Long id = parseId(versionId);
         validateFilePath(filePath);
-        Channel channel = channelRepository.findByName(channelName).orElseThrow(this::assetNotFound);
+        Channel channel = channelRepository.findById(parsedChannelId).orElseThrow(this::assetNotFound);
         versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(id, applicationId, channel.getId(),
                 BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE).orElseThrow(this::assetNotFound);
 
-        Path versionDir;
-        try {
-            versionDir = versionFileService.resolveVersionDir(applicationId, channel.getName(), id);
-        } catch (BadRequestException e) {
-            throw assetNotFound();
-        }
+        Path versionDir = versionFileService.resolveVersionDir(applicationId, channel.getId(), id);
         Path target = resolveDeclaredFile(versionDir, filePath);
         String mediaType = findDeclaredMediaType(readFileMetadata(versionDir), filePath);
         if (mediaType == null || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)
@@ -294,16 +289,14 @@ public class OtaSigningService {
     }
 
     private PrivateKey loadPrivateKey() {
-        if (privateKeyPath.trim().isEmpty()) {
-            log.warn("ota.private-key-path is not configured, OTA responses will be unsigned");
+        if (privateKeyPem.trim().isEmpty()) {
+            log.warn("ota.private.key is not configured, OTA responses will be unsigned");
             return null;
         }
         try {
-            String pem = new String(Files.readAllBytes(Path.of(privateKeyPath.trim())), StandardCharsets.UTF_8);
-            String body = pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", "");
-            byte[] der = Base64.getDecoder().decode(body);
+            byte[] der = Base64.getMimeDecoder().decode(privateKeyPem.trim());
             return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
-        } catch (IOException | GeneralSecurityException | IllegalArgumentException e) {
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
             log.warn("Cannot load OTA private key ({}), OTA responses will be unsigned", e.getClass().getSimpleName());
             return null;
         }

@@ -353,7 +353,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir(Long id) {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("prod").resolve(String.valueOf(id));
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve(String.valueOf(id));
     }
 
     private static void writeFile(Path file, byte[] content) throws IOException {
@@ -381,7 +381,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir() {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("prod").resolve("5");
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve("5");
     }
 
     private void assertRootIsEmpty() throws IOException {

@@ -13,6 +13,7 @@ import com.appmgr.api.mapper.ChannelMapper;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.criteria.ChannelCriteria;
 import com.appmgr.api.repository.ChannelRepository;
+import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,8 @@ class ChannelControllerTest {
 
     @Mock
     private ChannelRepository channelRepository;
+    @Mock
+    private VersionRepository versionRepository;
     @Mock
     private UserServiceImpl userService;
     @Spy
@@ -152,12 +155,26 @@ class ChannelControllerTest {
         Channel entity = new Channel();
         entity.setId(1L);
         when(channelRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(versionRepository.existsByChannelId(1L)).thenReturn(false);
 
         ApiMessageDto<Void> result = controller.delete(1L);
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getMessage()).isEqualTo("Delete channel success");
         verify(channelRepository).delete(entity);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenDeletingChannelThatHasVersions() {
+        Channel entity = new Channel();
+        entity.setId(1L);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(versionRepository.existsByChannelId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> controller.delete(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_UNABLE_DELETE);
+        verify(channelRepository, never()).delete(any(Channel.class));
     }
 
     @Test

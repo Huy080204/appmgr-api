@@ -538,7 +538,7 @@ class VersionControllerTest {
     void shouldDeleteVersionDirWhenDeletingBundleVersion() {
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
-        when(versionFileService.resolveVersionDir(1L, "prod", 5L)).thenReturn(VERSION_DIR);
+        when(versionFileService.resolveVersionDir(1L, 3L, 5L)).thenReturn(VERSION_DIR);
 
         ApiMessageDto<Void> result = controller.delete(5L);
 
