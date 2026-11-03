@@ -22,6 +22,10 @@ public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpec
     @Query("DELETE FROM Version v WHERE v.application.id IN (SELECT a.id FROM Application a WHERE a.project.id = :projectId)")
     void deleteAllByApplicationProjectId(@Param("projectId") Long projectId);
 
+    boolean existsByChannelId(Long channelId);
+
+    boolean existsByCategoryId(Long categoryId);
+
     Optional<Version> findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(Long id, Long applicationId, Long channelId, Integer type, Integer status);
 
     Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, Collection<Integer> types, Integer status);

@@ -73,7 +73,7 @@ public class VersionController extends ABasicController {
     private OtaService otaService;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_V')")
+    @PreAuthorize("hasRole('VER_V')")
     public ApiMessageDto<VersionDto> get(@PathVariable Long id) {
         Version version = versionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
@@ -81,7 +81,7 @@ public class VersionController extends ABasicController {
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_L')")
+    @PreAuthorize("hasRole('VER_L')")
     public ApiMessageDto<ResponseListDto<List<VersionDto>>> list(VersionCriteria versionCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Version> page = versionRepository.findAll(versionCriteria.getCriteria(), pageable);
         ResponseListDto<List<VersionDto>> responseListDto =
@@ -90,7 +90,7 @@ public class VersionController extends ABasicController {
     }
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_C')")
+    @PreAuthorize("hasRole('VER_C')")
     @Transactional
     public ApiMessageDto<VersionDto> create(@Valid CreateVersionForm createVersionForm, BindingResult bindingResult) {
         Application application = applicationRepository.findById(createVersionForm.getApplicationId())
@@ -123,7 +123,7 @@ public class VersionController extends ABasicController {
     }
 
     @PostMapping(value = "/republish/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_C')")
+    @PreAuthorize("hasRole('VER_C')")
     @Transactional
     public ApiMessageDto<VersionDto> republish(@PathVariable Long id) {
         Version source = versionRepository.findById(id)
@@ -139,7 +139,7 @@ public class VersionController extends ABasicController {
     }
 
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_U')")
+    @PreAuthorize("hasRole('VER_U')")
     @Transactional
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateVersionForm updateVersionForm, BindingResult bindingResult) {
         Version version = versionRepository.findById(updateVersionForm.getId())
@@ -160,7 +160,7 @@ public class VersionController extends ABasicController {
     }
 
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('VER_D')")
+    @PreAuthorize("hasRole('VER_D')")
     @Transactional
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Version version = versionRepository.findById(id)

@@ -13,6 +13,7 @@ import com.appmgr.api.mapper.CategoryMapper;
 import com.appmgr.api.model.Category;
 import com.appmgr.api.model.criteria.CategoryCriteria;
 import com.appmgr.api.repository.CategoryRepository;
+import com.appmgr.api.repository.VersionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,9 @@ import java.util.Objects;
 public class CategoryController extends ABasicController {
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private VersionRepository versionRepository;
 
     @Autowired
     private CategoryMapper categoryMapper;
@@ -93,6 +97,9 @@ public class CategoryController extends ABasicController {
     public ApiMessageDto<Void> delete(@PathVariable("id") Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Category not found", ErrorCode.CATEGORY_ERROR_NOT_FOUND));
+        if (versionRepository.existsByCategoryId(id)) {
+            throw new BadRequestException("Cannot delete category that has versions", ErrorCode.CATEGORY_ERROR_UNABLE_DELETE);
+        }
         categoryRepository.deleteById(id);
         return makeSuccessResponse("Delete category success");
     }

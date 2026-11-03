@@ -55,7 +55,7 @@ public class ApplicationController extends ABasicController {
     private VersionRepository versionRepository;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('APP_V')")
+    @PreAuthorize("hasRole('APP_V')")
     public ApiMessageDto<ApplicationDto> get(@PathVariable Long id) {
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
@@ -63,7 +63,7 @@ public class ApplicationController extends ABasicController {
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('APP_L')")
+    @PreAuthorize("hasRole('APP_L')")
     public ApiMessageDto<ResponseListDto<List<ApplicationDto>>> list(ApplicationCriteria applicationCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Application> page = applicationRepository.findAll(applicationCriteria.getCriteria(), pageable);
         ResponseListDto<List<ApplicationDto>> responseListDto =
@@ -72,7 +72,7 @@ public class ApplicationController extends ABasicController {
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('APP_C')")
+    @PreAuthorize("hasRole('APP_C')")
     @Transactional
     public ApiMessageDto<ApplicationDto> create(@Valid @RequestBody CreateApplicationForm createApplicationForm, BindingResult bindingResult) {
         Project project = projectRepository.findById(createApplicationForm.getProjectId())
@@ -88,7 +88,7 @@ public class ApplicationController extends ABasicController {
     }
 
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('APP_U')")
+    @PreAuthorize("hasRole('APP_U')")
     @Transactional
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateApplicationForm updateApplicationForm, BindingResult bindingResult) {
         Application application = applicationRepository.findById(updateApplicationForm.getId())

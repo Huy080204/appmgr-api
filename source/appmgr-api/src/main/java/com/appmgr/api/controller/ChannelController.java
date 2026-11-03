@@ -13,6 +13,7 @@ import com.appmgr.api.mapper.ChannelMapper;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.criteria.ChannelCriteria;
 import com.appmgr.api.repository.ChannelRepository;
+import com.appmgr.api.repository.VersionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -44,10 +45,13 @@ public class ChannelController extends ABasicController {
     private ChannelRepository channelRepository;
 
     @Autowired
+    private VersionRepository versionRepository;
+
+    @Autowired
     private ChannelMapper channelMapper;
 
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('CHN_V')")
+    @PreAuthorize("hasRole('CHN_V')")
     public ApiMessageDto<ChannelDto> get(@PathVariable Long id) {
         Channel channel = channelRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
@@ -55,7 +59,7 @@ public class ChannelController extends ABasicController {
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('CHN_L')")
+    @PreAuthorize("hasRole('CHN_L')")
     public ApiMessageDto<ResponseListDto<List<ChannelDto>>> list(ChannelCriteria channelCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Channel> page = channelRepository.findAll(channelCriteria.getCriteria(), pageable);
         ResponseListDto<List<ChannelDto>> responseListDto =
@@ -73,7 +77,7 @@ public class ChannelController extends ABasicController {
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('CHN_C')")
+    @PreAuthorize("hasRole('CHN_C')")
     @Transactional
     public ApiMessageDto<ChannelDto> create(@Valid @RequestBody CreateChannelForm createChannelForm, BindingResult bindingResult) {
         if (channelRepository.existsByName(createChannelForm.getName())) {
@@ -85,7 +89,7 @@ public class ChannelController extends ABasicController {
     }
 
     @PutMapping(value = "/update", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('CHN_U')")
+    @PreAuthorize("hasRole('CHN_U')")
     @Transactional
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateChannelForm updateChannelForm, BindingResult bindingResult) {
         Channel channel = channelRepository.findById(updateChannelForm.getId())
@@ -100,11 +104,14 @@ public class ChannelController extends ABasicController {
     }
 
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-//    @PreAuthorize("hasRole('CHN_D')")
+    @PreAuthorize("hasRole('CHN_D')")
     @Transactional
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Channel channel = channelRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
+        if (versionRepository.existsByChannelId(id)) {
+            throw new BadRequestException("Cannot delete channel that has versions", ErrorCode.CHANNEL_ERROR_UNABLE_DELETE);
+        }
         channelRepository.delete(channel);
         return makeSuccessResponse("Delete channel success");
     }
