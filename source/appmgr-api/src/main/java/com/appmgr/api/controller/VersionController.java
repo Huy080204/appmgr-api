@@ -167,7 +167,7 @@ public class VersionController extends ABasicController {
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
         if (!BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
             versionFileService.deleteVersionDir(versionFileService.resolveVersionDir(
-                    version.getApplication().getId(), version.getChannel().getName(), version.getId()));
+                    version.getApplication().getId(), version.getChannel().getId(), version.getId()));
         }
         versionRepository.delete(version);
         return makeSuccessResponse("Delete version success");

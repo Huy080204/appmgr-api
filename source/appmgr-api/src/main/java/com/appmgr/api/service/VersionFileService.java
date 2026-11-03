@@ -31,20 +31,12 @@ public class VersionFileService {
     @Value("${file.upload-dir}")
     private String rootDirectory;
 
-    public Path resolveVersionDir(Long appId, String channelName, Long versionId) {
-        Path appDir = Paths.get(rootDirectory).toAbsolutePath().normalize()
+    public Path resolveVersionDir(Long appId, Long channelId, Long versionId) {
+        return Paths.get(rootDirectory).toAbsolutePath().normalize()
                 .resolve(BaseConstant.VERSION_FOLDER)
-                .resolve(String.valueOf(appId));
-        Path channelDir;
-        try {
-            channelDir = appDir.resolve(channelName).normalize();
-        } catch (InvalidPathException e) {
-            throw new BadRequestException("Invalid channel name", ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
-        }
-        if (!appDir.equals(channelDir.getParent())) {
-            throw new BadRequestException("Invalid channel name", ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
-        }
-        return channelDir.resolve(String.valueOf(versionId));
+                .resolve(String.valueOf(appId))
+                .resolve(String.valueOf(channelId))
+                .resolve(String.valueOf(versionId));
     }
 
     public String resolveBundleExtension(String originalFilename) {
@@ -63,7 +55,7 @@ public class VersionFileService {
 
     public BundleFile resolveBundleFile(Version version) {
         try {
-            Path versionDir = resolveVersionDir(version.getApplication().getId(), version.getChannel().getName(),
+            Path versionDir = resolveVersionDir(version.getApplication().getId(), version.getChannel().getId(),
                     version.getId());
             try (Stream<Path> entries = Files.list(versionDir)) {
                 Optional<Path> bundle = entries
@@ -86,7 +78,7 @@ public class VersionFileService {
 
     public void storeVersionBundle(Version version, MultipartFile file) {
         Application application = version.getApplication();
-        Path versionDir = resolveVersionDir(application.getId(), version.getChannel().getName(), version.getId());
+        Path versionDir = resolveVersionDir(application.getId(), version.getChannel().getId(), version.getId());
         String fileName = application.getName() + "_" + version.getVersionName() + "_"
                 + version.getVersionCode() + "." + resolveBundleExtension(file.getOriginalFilename());
         try {

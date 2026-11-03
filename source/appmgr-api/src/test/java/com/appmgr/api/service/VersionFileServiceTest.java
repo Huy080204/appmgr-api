@@ -58,7 +58,7 @@ class VersionFileServiceTest {
     void storeBundle_writesFileAndCreatesParentDirs() throws IOException {
         byte[] content = "bundle-bytes".getBytes(StandardCharsets.UTF_8);
         MockMultipartFile file = new MockMultipartFile("file", "a.apk", "application/octet-stream", content);
-        Path versionDir = root.resolve("APP_VERSION/1/production/15");
+        Path versionDir = root.resolve("APP_VERSION/1/3/15");
 
         versionFileService.storeBundle(file, versionDir, "MyApp_1.0.0_10.apk");
 
@@ -70,7 +70,7 @@ class VersionFileServiceTest {
     @Test
     void storeBundle_parentTraversalFileName_throwsFileInvalidAndWritesNothingOutside() throws IOException {
         MockMultipartFile file = new MockMultipartFile("file", "a.apk", null, new byte[]{1});
-        Path versionDir = root.resolve("APP_VERSION/1/production/15");
+        Path versionDir = root.resolve("APP_VERSION/1/3/15");
 
         assertThatThrownBy(() -> versionFileService.storeBundle(file, versionDir, "../../evil.apk"))
                 .isInstanceOf(BadRequestException.class)
@@ -82,7 +82,7 @@ class VersionFileServiceTest {
     @Test
     void storeBundle_nestedTraversalFileName_throwsFileInvalidAndWritesNothingOutside() throws IOException {
         MockMultipartFile file = new MockMultipartFile("file", "a.apk", null, new byte[]{1});
-        Path versionDir = root.resolve("APP_VERSION/1/production/15");
+        Path versionDir = root.resolve("APP_VERSION/1/3/15");
 
         assertThatThrownBy(() -> versionFileService.storeBundle(file, versionDir, "a/../../b.apk"))
                 .isInstanceOf(BadRequestException.class)
@@ -94,7 +94,7 @@ class VersionFileServiceTest {
     @Test
     void storeBundle_invalidPathCharInFileName_throwsFileInvalid() {
         MockMultipartFile file = new MockMultipartFile("file", "a.apk", null, new byte[]{1});
-        Path versionDir = root.resolve("APP_VERSION/1/production/15");
+        Path versionDir = root.resolve("APP_VERSION/1/3/15");
 
         assertThatThrownBy(() -> versionFileService.storeBundle(file, versionDir, "a\u0000b.apk"))
                 .isInstanceOf(BadRequestException.class)
@@ -104,31 +104,15 @@ class VersionFileServiceTest {
 
     @Test
     void resolveVersionDir_buildsRootAppVersionPath() {
-        Path dir = versionFileService.resolveVersionDir(1L, "production", 15L);
+        Path dir = versionFileService.resolveVersionDir(1L, 3L, 15L);
 
         assertThat(dir.normalize())
-                .isEqualTo(root.resolve("APP_VERSION").resolve("1").resolve("production").resolve("15").normalize());
-    }
-
-    @Test
-    void resolveVersionDir_traversalChannelName_throwsZipEntryInvalid() {
-        assertThatThrownBy(() -> versionFileService.resolveVersionDir(1L, "../x", 15L))
-                .isInstanceOf(BadRequestException.class)
-                .extracting("code")
-                .isEqualTo(ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
-    }
-
-    @Test
-    void resolveVersionDir_invalidPathCharInChannelName_throwsZipEntryInvalid() {
-        assertThatThrownBy(() -> versionFileService.resolveVersionDir(1L, "a\u0000b", 15L))
-                .isInstanceOf(BadRequestException.class)
-                .extracting("code")
-                .isEqualTo(ErrorCode.VERSION_ERROR_ZIP_ENTRY_INVALID);
+                .isEqualTo(root.resolve("APP_VERSION").resolve("1").resolve("3").resolve("15").normalize());
     }
 
     @Test
     void deleteVersionDir_deletesRecursively() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15/assets"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15/assets"));
         Files.write(versionDir.resolve("a.bin"), new byte[]{1});
         Files.write(versionDir.getParent().resolve("metadata.json"), new byte[]{2});
         Path target = versionDir.getParent();
@@ -140,7 +124,7 @@ class VersionFileServiceTest {
 
     @Test
     void deleteVersionDir_missingDir_doesNotThrow() {
-        Path missing = root.resolve("APP_VERSION/9/none/99");
+        Path missing = root.resolve("APP_VERSION/9/4/99");
 
         assertThatCode(() -> versionFileService.deleteVersionDir(missing)).doesNotThrowAnyException();
     }
@@ -152,14 +136,14 @@ class VersionFileServiceTest {
 
         versionFileService.storeVersionBundle(savedBundleVersion(), file);
 
-        Path stored = root.resolve("APP_VERSION/1/production/15/MyApp_1.0.0_10.tar.gz");
+        Path stored = root.resolve("APP_VERSION/1/3/15/MyApp_1.0.0_10.tar.gz");
         assertThat(stored).exists().isRegularFile();
         assertThat(Files.readAllBytes(stored)).isEqualTo(content);
     }
 
     @Test
     void storeVersionBundle_storeFails_deletesVersionDirAndRethrows() throws IOException {
-        Path versionDir = root.resolve("APP_VERSION/1/production/15");
+        Path versionDir = root.resolve("APP_VERSION/1/3/15");
         Path blockingDir = Files.createDirectories(versionDir.resolve("MyApp_1.0.0_10.apk"));
         Files.write(blockingDir.resolve("a.bin"), new byte[]{1});
         MockMultipartFile file = new MockMultipartFile("file", "app.apk", null, new byte[]{1});
@@ -173,7 +157,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldReturnApkBundleFileWhenVersionDirHoldsExactlyOneApk() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Path apk = Files.write(versionDir.resolve("app_1.0_10.apk"), new byte[]{1, 2, 3});
 
         BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
@@ -185,7 +169,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldReturnTarGzBundleFileWhenVersionDirHoldsExactlyOneTarGz() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Path tarGz = Files.write(versionDir.resolve("app_1.0_10.tar.gz"), new byte[]{1, 2, 3, 4, 5});
 
         BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
@@ -204,7 +188,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldThrowNotFoundWhenVersionDirIsEmpty() throws IOException {
-        Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
 
         assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
                 .isInstanceOf(NotFoundException.class)
@@ -213,7 +197,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldThrowNotFoundWhenVersionDirHoldsOnlyNonBundleFiles() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Files.write(versionDir.resolve(".DS_Store"), new byte[]{1});
         Files.write(versionDir.resolve("notes.txt"), new byte[]{2});
 
@@ -224,7 +208,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldIgnoreNonBundleFileWhenItSitsNextToBundle() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Files.write(versionDir.resolve("notes.txt"), new byte[]{9});
         Path apk = Files.write(versionDir.resolve("app_1.0_10.apk"), new byte[]{1, 2, 3});
 
@@ -236,7 +220,7 @@ class VersionFileServiceTest {
 
     @Test
     void shouldAcceptBundleWhenExtensionIsUpperCase() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Path apk = Files.write(versionDir.resolve("APP.APK"), new byte[]{1});
 
         BundleFile result = versionFileService.resolveBundleFile(savedBundleVersion());
@@ -248,20 +232,10 @@ class VersionFileServiceTest {
 
     @Test
     void shouldThrowNotFoundWhenBundleNamedEntryIsDirectory() throws IOException {
-        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/production/15"));
+        Path versionDir = Files.createDirectories(root.resolve("APP_VERSION/1/3/15"));
         Files.createDirectories(versionDir.resolve("x.apk"));
 
         assertThatThrownBy(() -> versionFileService.resolveBundleFile(savedBundleVersion()))
-                .isInstanceOf(NotFoundException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
-    }
-
-    @Test
-    void shouldThrowNotFoundWhenChannelNameIsHostile() {
-        Version version = savedBundleVersion();
-        version.getChannel().setName("../evil");
-
-        assertThatThrownBy(() -> versionFileService.resolveBundleFile(version))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }

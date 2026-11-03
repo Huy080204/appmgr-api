@@ -77,7 +77,7 @@ class OtaControllerTest {
     }
 
     @Test
-    void shouldThrowBadRequestWhenChannelNameHeaderMissing() {
+    void shouldThrowBadRequestWhenChannelIdHeaderMissing() {
         HttpHeaders headers = validHeaders();
         headers.remove("expo-channel-name");
 
@@ -85,7 +85,7 @@ class OtaControllerTest {
     }
 
     @Test
-    void shouldNotQueryChannelWhenChannelNameHeaderMissing() {
+    void shouldNotQueryChannelWhenChannelIdHeaderMissing() {
         HttpHeaders headers = validHeaders();
         headers.remove("expo-channel-name");
 
@@ -111,11 +111,21 @@ class OtaControllerTest {
     }
 
     @Test
-    void shouldThrowBadRequestWhenChannelNameHeaderBlank() {
+    void shouldThrowBadRequestWhenChannelIdHeaderBlank() {
         HttpHeaders headers = validHeaders();
         headers.set("expo-channel-name", "   ");
 
         assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenChannelIdHeaderNotNumeric() {
+        HttpHeaders headers = validHeaders();
+        headers.set("expo-channel-name", "production");
+
+        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
+
+        verifyNoInteractions(channelRepository);
     }
 
     @Test
@@ -144,8 +154,8 @@ class OtaControllerTest {
     }
 
     @Test
-    void shouldThrowNotFoundWhenChannelNameUnknown() {
-        when(channelRepository.findByName("production")).thenReturn(Optional.empty());
+    void shouldThrowNotFoundWhenChannelIdUnknown() {
+        when(channelRepository.findById(5L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.manifest(validHeaders()))
                 .isInstanceOf(NotFoundException.class)
@@ -154,7 +164,7 @@ class OtaControllerTest {
 
     @Test
     void shouldThrowNotFoundWhenNoOtaVersionForChannel() {
-        when(channelRepository.findByName("production")).thenReturn(Optional.of(channel(5L, "production")));
+        when(channelRepository.findById(5L)).thenReturn(Optional.of(channel(5L, "production")));
         when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
                 1L, 2L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
@@ -181,7 +191,7 @@ class OtaControllerTest {
         assertThat(body).doesNotContain("name=\"manifest\"");
         assertThat(body).contains(json);
         verify(otaSigningService).buildNoUpdateDirective();
-        verify(otaSigningService, never()).buildManifest(any(Version.class), anyLong(), anyString(), anyString());
+        verify(otaSigningService, never()).buildManifest(any(Version.class), anyLong(), anyLong(), anyString());
     }
 
     @Test
@@ -189,26 +199,26 @@ class OtaControllerTest {
         Version version = stubLatestVersion("manifest-1");
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-0");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, "production", "ios");
+        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
         verify(otaSigningService, never()).buildNoUpdateDirective();
     }
 
     @Test
     void shouldBuildManifestWhenCurrentUpdateIdAbsent() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, "production", "ios");
+        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
         verify(otaSigningService, never()).buildNoUpdateDirective();
     }
 
@@ -217,20 +227,20 @@ class OtaControllerTest {
         Version version = stubLatestVersion(null);
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, "production", "ios");
+        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
         verify(otaSigningService, never()).buildNoUpdateDirective();
     }
 
     @Test
     void shouldSetProtocolHeadersAndMatchingBoundaryWhenManifestBuilt() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -250,7 +260,7 @@ class OtaControllerTest {
     void shouldWriteManifestPartOnceAndCloseWithBoundaryWhenManifestBuilt() {
         Version version = stubLatestVersion("manifest-1");
         String json = "{\"id\":\"manifest-1\"}";
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -285,7 +295,7 @@ class OtaControllerTest {
     @Test
     void shouldIncludeSignatureLineWhenSignatureHeaderPresent() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}",
                         "sig=:abc:, keyid=\"main\""));
 
@@ -297,7 +307,7 @@ class OtaControllerTest {
     @Test
     void shouldOmitSignatureLineWhenSignatureHeaderNull() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -308,7 +318,7 @@ class OtaControllerTest {
     @Test
     void shouldUseDifferentBoundaryOnEachCall() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> first = controller.manifest(validHeaders());
@@ -320,11 +330,11 @@ class OtaControllerTest {
     @Test
     void shouldReturnAssetWithMediaTypeAndNoContentDispositionWhenAssetResolved() {
         Resource resource = new ByteArrayResource(new byte[]{1, 2, 3});
-        when(otaSigningService.resolveAsset("10", "prod", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
                 .thenReturn(new OtaAsset(resource, "image/png"));
 
-        ResponseEntity<Resource> response = controller.assets("10", "prod", "555",
-                assetRequest("/v1/ota/assets/10/prod/555/assets/def"));
+        ResponseEntity<Resource> response = controller.assets("10", "5", "555",
+                assetRequest("/v1/ota/assets/10/5/555/assets/def"));
 
         assertThat(response.getStatusCodeValue()).isEqualTo(200);
         assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.IMAGE_PNG);
@@ -334,11 +344,11 @@ class OtaControllerTest {
 
     @Test
     void shouldPropagateNotFoundWhenAssetCannotBeResolved() {
-        when(otaSigningService.resolveAsset("10", "prod", "555", "missing"))
+        when(otaSigningService.resolveAsset("10", "5", "555", "missing"))
                 .thenThrow(new NotFoundException("Not found asset!", ErrorCode.VERSION_ERROR_NOT_FOUND));
-        MockHttpServletRequest request = assetRequest("/v1/ota/assets/10/prod/555/missing");
+        MockHttpServletRequest request = assetRequest("/v1/ota/assets/10/5/555/missing");
 
-        assertThatThrownBy(() -> controller.assets("10", "prod", "555", request))
+        assertThatThrownBy(() -> controller.assets("10", "5", "555", request))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -349,13 +359,13 @@ class OtaControllerTest {
     void shouldServeMultipartManifestThroughMvcWhenOnlyByteArrayJacksonAndResourceConvertersRegistered() throws Exception {
         Version version = stubLatestVersion("manifest-1");
         String json = "{\"id\":\"manifest-1\"}";
-        when(otaSigningService.buildManifest(version, 1L, "production", "ios"))
+        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
         MvcResult result = buildMockMvc().perform(get("/v1/ota/manifest")
                         .header("x-app-id", "1")
                         .header("x-category-id", "2")
-                        .header("expo-channel-name", "production")
+                        .header("expo-channel-name", "5")
                         .header("expo-platform", "ios")
                         .header("expo-runtime-version", "1.0.0"))
                 .andExpect(status().isOk())
@@ -372,11 +382,11 @@ class OtaControllerTest {
     @Test
     void shouldServeAssetBytesThroughMvcWhenNestedFilePathRequested() throws Exception {
         byte[] bytes = new byte[]{1, 2, 3, 4};
-        when(otaSigningService.resolveAsset("10", "prod", "555", "_expo/static/js/android/index-abc.hbc"))
+        when(otaSigningService.resolveAsset("10", "5", "555", "_expo/static/js/android/index-abc.hbc"))
                 .thenReturn(new OtaAsset(new ByteArrayResource(bytes), "application/javascript"));
 
         MvcResult result = buildMockMvc()
-                .perform(get("/v1/ota/assets/10/prod/555/_expo/static/js/android/index-abc.hbc"))
+                .perform(get("/v1/ota/assets/10/5/555/_expo/static/js/android/index-abc.hbc"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -387,10 +397,10 @@ class OtaControllerTest {
     @Test
     void shouldPassSingleSegmentFilePathToServiceThroughMvcWhenFileIsDirectlyUnderVersion() throws Exception {
         byte[] bytes = new byte[]{9, 8};
-        when(otaSigningService.resolveAsset("10", "prod", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
                 .thenReturn(new OtaAsset(new ByteArrayResource(bytes), "image/png"));
 
-        MvcResult result = buildMockMvc().perform(get("/v1/ota/assets/10/prod/555/assets/def"))
+        MvcResult result = buildMockMvc().perform(get("/v1/ota/assets/10/5/555/assets/def"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -400,11 +410,11 @@ class OtaControllerTest {
 
     @Test
     void shouldSurfaceNotFoundThroughMvcWhenServiceCannotResolveAsset() {
-        when(otaSigningService.resolveAsset("10", "prod", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
                 .thenThrow(new NotFoundException("Asset not found", ErrorCode.VERSION_ERROR_NOT_FOUND));
         MockMvc mockMvc = buildMockMvc();
 
-        assertThatThrownBy(() -> mockMvc.perform(get("/v1/ota/assets/10/prod/555/assets/def")))
+        assertThatThrownBy(() -> mockMvc.perform(get("/v1/ota/assets/10/5/555/assets/def")))
                 .isInstanceOf(ServletException.class)
                 .satisfies(ex -> assertThat(ex.getCause())
                         .isInstanceOf(NotFoundException.class)
@@ -414,7 +424,7 @@ class OtaControllerTest {
     private MockHttpServletRequest assetRequest(String requestPath) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", requestPath);
         request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
-                "/v1/ota/assets/{appId}/{channelName}/{versionId}/**");
+                "/v1/ota/assets/{appId}/{channelId}/{versionId}/**");
         request.setAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, requestPath);
         return request;
     }
@@ -431,7 +441,7 @@ class OtaControllerTest {
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-app-id", "1");
         headers.set("x-category-id", "2");
-        headers.set("expo-channel-name", "production");
+        headers.set("expo-channel-name", "5");
         headers.set("expo-platform", "ios");
         headers.set("expo-runtime-version", "1.0.0");
         return headers;
@@ -447,7 +457,9 @@ class OtaControllerTest {
     private Version stubLatestVersion(String manifestId) {
         Version version = new Version();
         version.setManifestId(manifestId);
-        when(channelRepository.findByName("production")).thenReturn(Optional.of(channel(5L, "production")));
+        Channel channel = channel(5L, "production");
+        version.setChannel(channel);
+        when(channelRepository.findById(5L)).thenReturn(Optional.of(channel));
         when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
                 1L, 2L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(version));

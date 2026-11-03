@@ -48,7 +48,7 @@ public class OtaController extends ABasicController {
     public ResponseEntity<byte[]> manifest(@RequestHeader HttpHeaders headers) {
         Long appId = parseId(headers, BaseConstant.OTA_HEADER_APP_ID);
         Long categoryId = parseId(headers, BaseConstant.OTA_HEADER_CATEGORY_ID);
-        String channelName = requireHeader(headers, BaseConstant.OTA_HEADER_CHANNEL_NAME);
+        Long channelId = parseId(headers, BaseConstant.OTA_HEADER_CHANNEL_NAME);
         String platform = requireHeader(headers, BaseConstant.OTA_HEADER_PLATFORM);
         if (!BaseConstant.OTA_PLATFORM_IOS.equals(platform) && !BaseConstant.OTA_PLATFORM_ANDROID.equals(platform)) {
             throw new BadRequestException("Invalid header " + BaseConstant.OTA_HEADER_PLATFORM);
@@ -56,11 +56,11 @@ public class OtaController extends ABasicController {
         String runtimeVersion = requireHeader(headers, BaseConstant.OTA_HEADER_RUNTIME_VERSION);
         String currentUpdateId = headers.getFirst(BaseConstant.OTA_HEADER_CURRENT_UPDATE_ID);
 
-        Channel channel = channelRepository.findByName(channelName)
+        Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
         Version version = versionRepository
                 .findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
-                        appId, categoryId, channel.getId(), runtimeVersion,
+                        appId, categoryId, channelId, runtimeVersion,
                         BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
 
@@ -68,18 +68,18 @@ public class OtaController extends ABasicController {
         if (currentUpdateId != null && currentUpdateId.equals(version.getManifestId())) {
             part = otaSigningService.buildNoUpdateDirective();
         } else {
-            part = otaSigningService.buildManifest(version, appId, channel.getName(), platform);
+            part = otaSigningService.buildManifest(version, appId, channelId, platform);
         }
         return buildMultipartResponse(part);
     }
 
-    @GetMapping(value = "/assets/{appId}/{channelName}/{versionId}/**")
-    public ResponseEntity<Resource> assets(@PathVariable String appId, @PathVariable String channelName,
+    @GetMapping(value = "/assets/{appId}/{channelId}/{versionId}/**")
+    public ResponseEntity<Resource> assets(@PathVariable String appId, @PathVariable String channelId,
                                            @PathVariable String versionId, HttpServletRequest request) {
         String pattern = String.valueOf(request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE));
         String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
         String filePath = PATH_MATCHER.extractPathWithinPattern(pattern, path);
-        OtaAsset otaAsset = otaSigningService.resolveAsset(appId, channelName, versionId, filePath);
+        OtaAsset otaAsset = otaSigningService.resolveAsset(appId, channelId, versionId, filePath);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(otaAsset.getMediaType()))
                 .body(otaAsset.getResource());
