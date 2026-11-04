@@ -21,7 +21,6 @@ public class VersionCriteria implements Serializable {
     private Long id;
     private Integer status;
     private Long applicationId;
-    private Long categoryId;
     private Long channelId;
     private Integer type;
 
@@ -46,16 +45,12 @@ public class VersionCriteria implements Serializable {
                     predicates.add(cb.equal(root.get("application").get("id"), getApplicationId()));
                 }
 
-                if (getCategoryId() != null) {
-                    predicates.add(cb.equal(root.get("category").get("id"), getCategoryId()));
-                }
-
                 if (getChannelId() != null) {
                     predicates.add(cb.equal(root.get("channel").get("id"), getChannelId()));
                 }
 
                 if (getType() != null) {
-                    predicates.add(cb.equal(root.get("type"), getType()));
+                    predicates.add(cb.equal(root.get("application").get("type"), getType()));
                 }
 
                 return cb.and(predicates.toArray(new Predicate[0]));

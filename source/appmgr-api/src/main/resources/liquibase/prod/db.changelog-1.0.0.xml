@@ -123,30 +123,6 @@
                                  referencedTableName="db_permission" validate="true"/>
     </changeSet>
     <changeSet author="Authentication" id="1774064697885-9">
-        <createTable tableName="db_category">
-            <column name="id" type="BIGINT">
-                <constraints nullable="false" primaryKey="true" primaryKeyName="db_categoryPK"/>
-            </column>
-            <column name="name" type="VARCHAR(255)"/>
-            <column name="description" type="TEXT"/>
-            <column name="created_by" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="created_date" type="datetime">
-                <constraints nullable="false"/>
-            </column>
-            <column name="modified_by" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="modified_date" type="datetime">
-                <constraints nullable="false"/>
-            </column>
-            <column name="status" type="INT">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-    </changeSet>
-    <changeSet author="Authentication" id="1774064697885-10">
         <insert tableName="db_group">
             <column name="id" valueNumeric="15"/>
             <column name="name" value="ROLE ADMIN"/>
@@ -160,7 +136,7 @@
             <column name="modified_date" valueDate="2023-09-30T04:45:04"/>
         </insert>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-11">
+    <changeSet author="Authentication" id="1774064697885-10">
         <createTable tableName="oauth2_registered_client">
             <column name="id" type="VARCHAR(100)">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="oauth2_registered_clientPK"/>
@@ -195,7 +171,7 @@
             </column>
         </createTable>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-12">
+    <changeSet author="Authentication" id="1774064697885-11">
         <insert tableName="oauth2_registered_client">
             <column name="id" value="abc_client"/>
             <column name="client_id" value="abc_client"/>
@@ -211,7 +187,7 @@
                     value="{&quot;@class&quot;:&quot;java.util.Collections$UnmodifiableMap&quot;,&quot;settings.token.reuse-refresh-tokens&quot;:false,&quot;settings.token.x509-certificate-bound-access-tokens&quot;:false,&quot;settings.token.id-token-signature-algorithm&quot;:[&quot;org.springframework.security.oauth2.jose.jws.SignatureAlgorithm&quot;,&quot;RS256&quot;],&quot;settings.token.access-token-time-to-live&quot;:[&quot;java.time.Duration&quot;,2592000.000000000],&quot;settings.token.access-token-format&quot;:{&quot;@class&quot;:&quot;org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat&quot;,&quot;value&quot;:&quot;self-contained&quot;},&quot;settings.token.refresh-token-time-to-live&quot;:[&quot;java.time.Duration&quot;,2592000.000000000],&quot;settings.token.authorization-code-time-to-live&quot;:[&quot;java.time.Duration&quot;,300.000000000],&quot;settings.token.device-code-time-to-live&quot;:[&quot;java.time.Duration&quot;,300.000000000]}"/>
         </insert>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-13">
+    <changeSet author="Authentication" id="1774064697885-12">
         <insert tableName="db_permission">
             <column name="id" valueNumeric="6778614941024257"/>
             <column name="name" value="Create account"/>
@@ -479,79 +455,7 @@
             <column name="modified_date" valueDate="2026-08-18T09:00:09"/>
         </insert>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-14">
-        <insert tableName="db_permission">
-            <column name="id" valueNumeric="9762524115927040"/>
-            <column name="name" value="Create category"/>
-            <column name="action" value="/v1/category/create"/>
-            <column name="show_menu" valueBoolean="false"/>
-            <column name="description" value="Create category"/>
-            <column name="name_group" value="Category"/>
-            <column name="p_code" value="CAT_C"/>
-            <column name="status" valueNumeric="1"/>
-            <column name="created_by" value="admin"/>
-            <column name="created_date" valueDate="2026-08-18T09:00:00"/>
-            <column name="modified_by" value="admin"/>
-            <column name="modified_date" valueDate="2026-08-18T09:00:00"/>
-        </insert>
-        <insert tableName="db_permission">
-            <column name="id" valueNumeric="9762524115927041"/>
-            <column name="name" value="Get category detail"/>
-            <column name="action" value="/v1/category/get"/>
-            <column name="show_menu" valueBoolean="false"/>
-            <column name="description" value="Get category detail"/>
-            <column name="name_group" value="Category"/>
-            <column name="p_code" value="CAT_V"/>
-            <column name="status" valueNumeric="1"/>
-            <column name="created_by" value="admin"/>
-            <column name="created_date" valueDate="2026-08-18T09:00:01"/>
-            <column name="modified_by" value="admin"/>
-            <column name="modified_date" valueDate="2026-08-18T09:00:01"/>
-        </insert>
-        <insert tableName="db_permission">
-            <column name="id" valueNumeric="9762524115927042"/>
-            <column name="name" value="Get list category"/>
-            <column name="action" value="/v1/category/list"/>
-            <column name="show_menu" valueBoolean="true"/>
-            <column name="description" value="Get list category"/>
-            <column name="name_group" value="Category"/>
-            <column name="p_code" value="CAT_L"/>
-            <column name="status" valueNumeric="1"/>
-            <column name="created_by" value="admin"/>
-            <column name="created_date" valueDate="2026-08-18T09:00:02"/>
-            <column name="modified_by" value="admin"/>
-            <column name="modified_date" valueDate="2026-08-18T09:00:02"/>
-        </insert>
-        <insert tableName="db_permission">
-            <column name="id" valueNumeric="9762524115927043"/>
-            <column name="name" value="Delete a category"/>
-            <column name="action" value="/v1/category/delete"/>
-            <column name="show_menu" valueBoolean="false"/>
-            <column name="description" value="Delete a category"/>
-            <column name="name_group" value="Category"/>
-            <column name="p_code" value="CAT_D"/>
-            <column name="status" valueNumeric="1"/>
-            <column name="created_by" value="admin"/>
-            <column name="created_date" valueDate="2026-08-18T09:00:03"/>
-            <column name="modified_by" value="admin"/>
-            <column name="modified_date" valueDate="2026-08-18T09:00:03"/>
-        </insert>
-        <insert tableName="db_permission">
-            <column name="id" valueNumeric="9762524115927044"/>
-            <column name="name" value="Update a category"/>
-            <column name="action" value="/v1/category/update"/>
-            <column name="show_menu" valueBoolean="false"/>
-            <column name="description" value="Update a category"/>
-            <column name="name_group" value="Category"/>
-            <column name="p_code" value="CAT_U"/>
-            <column name="status" valueNumeric="1"/>
-            <column name="created_by" value="admin"/>
-            <column name="created_date" valueDate="2026-08-18T09:00:04"/>
-            <column name="modified_by" value="admin"/>
-            <column name="modified_date" valueDate="2026-08-18T09:00:04"/>
-        </insert>
-    </changeSet>
-    <changeSet author="Authentication" id="1774064697885-15">
+    <changeSet author="Authentication" id="1774064697885-13">
         <insert tableName="db_permission_group">
             <column name="group_id" valueNumeric="15"/>
             <column name="permission_id" valueNumeric="6778614941024270"/>
@@ -629,29 +533,7 @@
             <column name="permission_id" valueNumeric="9762524115927049"/>
         </insert>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-16">
-        <insert tableName="db_permission_group">
-            <column name="group_id" valueNumeric="15"/>
-            <column name="permission_id" valueNumeric="9762524115927040"/>
-        </insert>
-        <insert tableName="db_permission_group">
-            <column name="group_id" valueNumeric="15"/>
-            <column name="permission_id" valueNumeric="9762524115927041"/>
-        </insert>
-        <insert tableName="db_permission_group">
-            <column name="group_id" valueNumeric="15"/>
-            <column name="permission_id" valueNumeric="9762524115927042"/>
-        </insert>
-        <insert tableName="db_permission_group">
-            <column name="group_id" valueNumeric="15"/>
-            <column name="permission_id" valueNumeric="9762524115927043"/>
-        </insert>
-        <insert tableName="db_permission_group">
-            <column name="group_id" valueNumeric="15"/>
-            <column name="permission_id" valueNumeric="9762524115927044"/>
-        </insert>
-    </changeSet>
-    <changeSet author="Authentication" id="1774064697885-17">
+    <changeSet author="Authentication" id="1774064697885-14">
         <insert tableName="db_account">
             <column name="id" valueNumeric="2"/>
             <column name="kind" valueNumeric="1"/>
@@ -671,7 +553,7 @@
             <column name="modified_date" valueDate="2023-04-16T14:52:55"/>
         </insert>
     </changeSet>
-    <changeSet author="Authentication" id="1774064697885-18">
+    <changeSet author="Authentication" id="1774064697885-15">
         <createTable tableName="db_setting">
             <column name="id" type="BIGINT">
                 <constraints nullable="false" primaryKey="true" primaryKeyName="db_settingPK"/>

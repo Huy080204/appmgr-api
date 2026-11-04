@@ -23,14 +23,9 @@ public class Version extends Auditable<String> {
     private Application application;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "channel_id")
     private Channel channel;
 
-    private Integer type;
     private Integer versionCode;
     private String versionName;
     private Boolean requiredUpdate;

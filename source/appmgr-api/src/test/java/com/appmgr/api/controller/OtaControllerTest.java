@@ -69,14 +69,6 @@ class OtaControllerTest {
     }
 
     @Test
-    void shouldThrowBadRequestWhenCategoryIdHeaderMissing() {
-        HttpHeaders headers = validHeaders();
-        headers.remove("x-category-id");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
     void shouldThrowBadRequestWhenChannelIdHeaderMissing() {
         HttpHeaders headers = validHeaders();
         headers.remove("expo-channel-name");
@@ -165,8 +157,8 @@ class OtaControllerTest {
     @Test
     void shouldThrowNotFoundWhenNoOtaVersionForChannel() {
         when(channelRepository.findById(5L)).thenReturn(Optional.of(channel(5L, "production")));
-        when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
-                1L, 2L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findFirstByApplicationIdAndChannelIdAndRuntimeVersionAndApplicationTypeAndStatusOrderByTimestampDesc(
+                1L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.manifest(validHeaders()))
@@ -364,7 +356,6 @@ class OtaControllerTest {
 
         MvcResult result = buildMockMvc().perform(get("/v1/ota/manifest")
                         .header("x-app-id", "1")
-                        .header("x-category-id", "2")
                         .header("expo-channel-name", "5")
                         .header("expo-platform", "ios")
                         .header("expo-runtime-version", "1.0.0"))
@@ -440,7 +431,6 @@ class OtaControllerTest {
     private HttpHeaders validHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-app-id", "1");
-        headers.set("x-category-id", "2");
         headers.set("expo-channel-name", "5");
         headers.set("expo-platform", "ios");
         headers.set("expo-runtime-version", "1.0.0");
@@ -460,8 +450,8 @@ class OtaControllerTest {
         Channel channel = channel(5L, "production");
         version.setChannel(channel);
         when(channelRepository.findById(5L)).thenReturn(Optional.of(channel));
-        when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
-                1L, 2L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findFirstByApplicationIdAndChannelIdAndRuntimeVersionAndApplicationTypeAndStatusOrderByTimestampDesc(
+                1L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(version));
         return version;
     }

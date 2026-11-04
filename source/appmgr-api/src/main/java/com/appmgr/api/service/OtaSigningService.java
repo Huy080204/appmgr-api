@@ -68,7 +68,7 @@ public class OtaSigningService {
 
     public OtaPart buildManifest(Version version, Long appId, Channel channel, String platform) {
         Long channelId = channel.getId();
-        Path versionDir = versionFileService.resolveVersionDir(appId, version.getCategory().getId(), channelId,
+        Path versionDir = versionFileService.resolveVersionDir(appId, channelId,
                 version.getId());
         JsonNode platformNode = readFileMetadata(versionDir).path(platform);
         if (!platformNode.isObject()) {
@@ -104,11 +104,11 @@ public class OtaSigningService {
         Long id = parseId(versionId);
         validateFilePath(filePath);
         Version version = versionRepository
-                .findByIdAndTypeAndStatus(id, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE)
+                .findByIdAndApplicationTypeAndStatus(id, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE)
                 .orElseThrow(this::assetNotFound);
 
         Path versionDir = versionFileService.resolveVersionDir(version.getApplication().getId(),
-                version.getCategory().getId(), version.getChannel().getId(), id);
+                version.getChannel().getId(), id);
         Path target = resolveDeclaredFile(versionDir, filePath);
         String mediaType = findDeclaredMediaType(readFileMetadata(versionDir), filePath);
         if (mediaType == null || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)

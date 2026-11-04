@@ -2,7 +2,6 @@ package com.appmgr.api.dto.version;
 
 import com.appmgr.api.dto.ABasicAdminDto;
 import com.appmgr.api.dto.application.ApplicationDto;
-import com.appmgr.api.dto.category.CategoryDto;
 import com.appmgr.api.dto.channel.ChannelDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -15,9 +14,6 @@ public class VersionDto extends ABasicAdminDto {
 
     @Schema(name = "application")
     private ApplicationDto application;
-
-    @Schema(name = "category")
-    private CategoryDto category;
 
     @Schema(name = "channel")
     private ChannelDto channel;

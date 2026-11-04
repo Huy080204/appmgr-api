@@ -10,7 +10,6 @@ import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.VersionFileService;
@@ -40,9 +39,6 @@ public class BundleController extends ABasicController {
     private ApplicationRepository applicationRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
     private ChannelRepository channelRepository;
 
     @Autowired
@@ -52,20 +48,17 @@ public class BundleController extends ABasicController {
     private VersionFileService versionFileService;
 
     @GetMapping(value = "/check-version", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ApiMessageDto<CheckVersionDto> checkVersion(@RequestParam Long appId, @RequestParam Long categoryId, @RequestParam Long channelId) {
+    public ApiMessageDto<CheckVersionDto> checkVersion(@RequestParam Long appId, @RequestParam Long channelId) {
         if (!applicationRepository.existsById(appId)) {
             throw new BadRequestException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND);
-        }
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new BadRequestException("Not found category!", ErrorCode.CATEGORY_ERROR_NOT_FOUND);
         }
         if (!channelRepository.existsById(channelId)) {
             throw new BadRequestException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND);
         }
 
         CheckVersionDto checkVersionDto = versionRepository
-                .findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(
-                        appId, categoryId, channelId,
+                .findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(
+                        appId, channelId,
                         BaseConstant.BUNDLE_VERSION_TYPES,
                         BaseConstant.STATUS_ACTIVE)
                 .map(versionMapper::fromEntityToCheckVersionDto)
@@ -76,7 +69,7 @@ public class BundleController extends ABasicController {
     @GetMapping(value = "/download-version")
     public ResponseEntity<Resource> downloadVersion(@RequestParam Long versionId) {
         Version version = versionRepository
-                .findByIdAndTypeAndStatus(versionId, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE)
+                .findByIdAndApplicationTypeAndStatus(versionId, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
 
         BundleFile file = versionFileService.resolveBundleFile(version);

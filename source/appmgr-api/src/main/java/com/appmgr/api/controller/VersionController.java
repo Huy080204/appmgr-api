@@ -11,12 +11,10 @@ import com.appmgr.api.form.version.CreateVersionForm;
 import com.appmgr.api.form.version.UpdateVersionForm;
 import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Application;
-import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.model.criteria.VersionCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.OtaService;
@@ -58,9 +56,6 @@ public class VersionController extends ABasicController {
     private ApplicationRepository applicationRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
     private ChannelRepository channelRepository;
 
     @Autowired
@@ -95,21 +90,19 @@ public class VersionController extends ABasicController {
     public ApiMessageDto<VersionDto> create(@Valid CreateVersionForm createVersionForm, BindingResult bindingResult) {
         Application application = applicationRepository.findById(createVersionForm.getApplicationId())
                 .orElseThrow(() -> new BadRequestException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
-        Category category = categoryRepository.findById(createVersionForm.getCategoryId())
-                .orElseThrow(() -> new BadRequestException("Not found category!", ErrorCode.CATEGORY_ERROR_NOT_FOUND));
         Channel channel = channelRepository.findById(createVersionForm.getChannelId())
                 .orElseThrow(() -> new BadRequestException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
-        validateCreateForm(createVersionForm);
+        Integer applicationType = application.getType();
+        validateCreateForm(createVersionForm, applicationType);
 
         Version version = versionMapper.fromCreateForm(createVersionForm);
         version.setApplication(application);
-        version.setCategory(category);
         version.setChannel(channel);
         version.setTimestamp(Instant.now().toEpochMilli());
-        if (BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
+        if (BaseConstant.VERSION_TYPE_STORE.equals(applicationType)) {
             version.setUrlBundle(createVersionForm.getUrlBundle());
             versionRepository.save(version);
-        } else if (BaseConstant.VERSION_TYPE_BUNDLE.equals(version.getType())) {
+        } else if (BaseConstant.VERSION_TYPE_BUNDLE.equals(applicationType)) {
             versionRepository.save(version);
             versionFileService.storeVersionBundle(version, createVersionForm.getFile());
             version.setUrlBundle(buildBundleUrl(version));
@@ -126,7 +119,7 @@ public class VersionController extends ABasicController {
     public ApiMessageDto<VersionDto> republish(@PathVariable Long id) {
         Version source = versionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
-        if (!BaseConstant.VERSION_TYPE_OTA.equals(source.getType())) {
+        if (!BaseConstant.VERSION_TYPE_OTA.equals(source.getApplication().getType())) {
             throw new BadRequestException("Only OTA version can be republished");
         }
         if (!BaseConstant.STATUS_ACTIVE.equals(source.getStatus())) {
@@ -142,10 +135,10 @@ public class VersionController extends ABasicController {
     public ApiMessageDto<Void> update(@Valid @RequestBody UpdateVersionForm updateVersionForm, BindingResult bindingResult) {
         Version version = versionRepository.findById(updateVersionForm.getId())
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
-        validateUpdateForm(updateVersionForm, version.getType());
+        validateUpdateForm(updateVersionForm, version.getApplication().getType());
 
         versionMapper.updateFromUpdateForm(updateVersionForm, version);
-        if (BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
+        if (BaseConstant.VERSION_TYPE_STORE.equals(version.getApplication().getType())) {
             version.setUrlBundle(updateVersionForm.getUrlBundle());
         }
         versionRepository.save(version);
@@ -158,9 +151,9 @@ public class VersionController extends ABasicController {
     public ApiMessageDto<Void> delete(@PathVariable Long id) {
         Version version = versionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
-        if (!BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
+        if (!BaseConstant.VERSION_TYPE_STORE.equals(version.getApplication().getType())) {
             versionFileService.deleteVersionDir(versionFileService.resolveVersionDir(
-                    version.getApplication().getId(), version.getCategory().getId(),
+                    version.getApplication().getId(),
                     version.getChannel().getId(), version.getId()));
         }
         versionRepository.delete(version);
@@ -173,16 +166,16 @@ public class VersionController extends ABasicController {
                 .toUriString();
     }
 
-    private void validateCreateForm(CreateVersionForm form) {
+    private void validateCreateForm(CreateVersionForm form, Integer applicationType) {
         MultipartFile file = form.getFile();
-        if (BaseConstant.VERSION_TYPE_BUNDLE.equals(form.getType())) {
+        if (BaseConstant.VERSION_TYPE_BUNDLE.equals(applicationType)) {
             validateRequiredUpdate(form.getRequiredUpdate());
             validateMinVersion(form.getMinVersion(), form.getVersionCode());
             if (file == null || versionFileService.resolveBundleExtension(file.getOriginalFilename()) == null
                     || file.isEmpty()) {
                 throw new BadRequestException("Bundle file is invalid");
             }
-        } else if (BaseConstant.VERSION_TYPE_STORE.equals(form.getType())) {
+        } else if (BaseConstant.VERSION_TYPE_STORE.equals(applicationType)) {
             validateRequiredUpdate(form.getRequiredUpdate());
             if (!StringUtils.hasText(form.getUrlBundle())) {
                 throw new BadRequestException("urlBundle is required");
@@ -198,8 +191,8 @@ public class VersionController extends ABasicController {
         }
     }
 
-    private void validateUpdateForm(UpdateVersionForm form, Integer type) {
-        if (BaseConstant.VERSION_TYPE_OTA.equals(type)) {
+    private void validateUpdateForm(UpdateVersionForm form, Integer applicationType) {
+        if (BaseConstant.VERSION_TYPE_OTA.equals(applicationType)) {
             if (!StringUtils.hasText(form.getRuntimeVersion())) {
                 throw new BadRequestException("runtimeVersion is required");
             }
@@ -207,7 +200,7 @@ public class VersionController extends ABasicController {
         }
         validateRequiredUpdate(form.getRequiredUpdate());
         validateMinVersion(form.getMinVersion(), form.getVersionCode());
-        if (BaseConstant.VERSION_TYPE_STORE.equals(type) && !StringUtils.hasText(form.getUrlBundle())) {
+        if (BaseConstant.VERSION_TYPE_STORE.equals(applicationType) && !StringUtils.hasText(form.getUrlBundle())) {
             throw new BadRequestException("urlBundle is required");
         }
     }

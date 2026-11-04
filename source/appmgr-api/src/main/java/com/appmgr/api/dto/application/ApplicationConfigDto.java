@@ -13,9 +13,6 @@ public class ApplicationConfigDto {
     @Schema(name = "appId")
     @JsonSerialize(using = LongToStringIfWebSerializer.class)
     private Long appId;
-    @Schema(name = "categoryId")
-    @JsonSerialize(using = LongToStringIfWebSerializer.class)
-    private Long categoryId;
     @Schema(name = "channelId")
     @JsonSerialize(using = LongToStringIfWebSerializer.class)
     private Long channelId;

@@ -47,7 +47,6 @@ public class OtaController extends ABasicController {
     @GetMapping(value = "/manifest")
     public ResponseEntity<byte[]> manifest(@RequestHeader HttpHeaders headers) {
         Long appId = parseId(headers, BaseConstant.OTA_HEADER_APP_ID);
-        Long categoryId = parseId(headers, BaseConstant.OTA_HEADER_CATEGORY_ID);
         Long channelId = parseId(headers, BaseConstant.OTA_HEADER_CHANNEL_NAME);
         String platform = requireHeader(headers, BaseConstant.OTA_HEADER_PLATFORM);
         if (!BaseConstant.OTA_PLATFORM_IOS.equals(platform) && !BaseConstant.OTA_PLATFORM_ANDROID.equals(platform)) {
@@ -59,8 +58,8 @@ public class OtaController extends ABasicController {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
         Version version = versionRepository
-                .findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(
-                        appId, categoryId, channelId, runtimeVersion,
+                .findFirstByApplicationIdAndChannelIdAndRuntimeVersionAndApplicationTypeAndStatusOrderByTimestampDesc(
+                        appId, channelId, runtimeVersion,
                         BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
 

@@ -63,7 +63,6 @@ public class BaseConstant {
 
     // OTA: request
     public static final String OTA_HEADER_APP_ID = "x-app-id";
-    public static final String OTA_HEADER_CATEGORY_ID = "x-category-id";
     public static final String OTA_HEADER_CHANNEL_NAME = "expo-channel-name";
     public static final String OTA_HEADER_PLATFORM = "expo-platform";
     public static final String OTA_HEADER_RUNTIME_VERSION = "expo-runtime-version";

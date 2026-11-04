@@ -1,7 +1,6 @@
 package com.appmgr.api.form.version;
 
 import com.appmgr.api.form.StringToLongDeserializer;
-import com.appmgr.api.validation.VersionType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -20,19 +19,10 @@ public class CreateVersionForm {
     @Schema(name = "applicationId", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long applicationId;
 
-    @NotNull(message = "categoryId cannot be null")
-    @JsonDeserialize(using = StringToLongDeserializer.class)
-    @Schema(name = "categoryId", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long categoryId;
-
     @NotNull(message = "channelId cannot be null")
     @JsonDeserialize(using = StringToLongDeserializer.class)
     @Schema(name = "channelId", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long channelId;
-
-    @VersionType
-    @Schema(name = "type", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Integer type;
 
     @Schema(name = "versionCode")
     private Integer versionCode;

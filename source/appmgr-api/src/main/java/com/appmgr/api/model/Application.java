@@ -24,6 +24,8 @@ public class Application extends Auditable<String> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    private Integer type; // 1: BUNDLE, 2: STORE, 3: OTA
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Project project;

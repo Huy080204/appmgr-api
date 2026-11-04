@@ -14,6 +14,8 @@ public class ApplicationDto extends ABasicAdminDto {
     private String name;
     @Schema(name = "description")
     private String description;
+    @Schema(name = "type")
+    private Integer type;
     @Schema(name = "project")
     private ProjectDto project;
 }

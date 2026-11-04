@@ -1,6 +1,10 @@
 package com.appmgr.api.repository;
 
 import com.appmgr.api.model.Version;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -11,6 +15,14 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpecificationExecutor<Version> {
+
+    @Override
+    @EntityGraph(attributePaths = {"application"})
+    Optional<Version> findById(Long id);
+
+    @Override
+    @EntityGraph(attributePaths = {"application", "application.project", "channel"})
+    Page<Version> findAll(Specification<Version> spec, Pageable pageable);
 
     @Modifying
     @Transactional
@@ -24,13 +36,10 @@ public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpec
 
     boolean existsByChannelId(Long channelId);
 
-    boolean existsByCategoryId(Long categoryId);
+    Optional<Version> findByIdAndApplicationTypeAndStatus(Long id, Integer type, Integer status);
 
-    Optional<Version> findByIdAndTypeAndStatus(Long id, Integer type, Integer status);
+    @EntityGraph(attributePaths = {"application"})
+    Optional<Version> findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(Long applicationId, Long channelId, Collection<Integer> types, Integer status);
 
-    Optional<Version> findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(Long id, Long applicationId, Long channelId, Integer type, Integer status);
-
-    Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, Collection<Integer> types, Integer status);
-
-    Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndRuntimeVersionAndTypeAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, String runtimeVersion, Integer type, Integer status);
+    Optional<Version> findFirstByApplicationIdAndChannelIdAndRuntimeVersionAndApplicationTypeAndStatusOrderByTimestampDesc(Long applicationId, Long channelId, String runtimeVersion, Integer type, Integer status);
 }

@@ -1,6 +1,7 @@
 package com.appmgr.api.form.application;
 
 import com.appmgr.api.form.StringToLongDeserializer;
+import com.appmgr.api.validation.VersionType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -24,4 +25,8 @@ public class CreateApplicationForm {
     @JsonDeserialize(using = StringToLongDeserializer.class)
     @Schema(name = "projectId", required = true)
     private Long projectId;
+
+    @VersionType
+    @Schema(name = "type", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Integer type;
 }

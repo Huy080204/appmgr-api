@@ -8,6 +8,7 @@
             <column name="name" type="VARCHAR(255)"/>
             <column name="description" type="TEXT"/>
             <column name="project_id" type="BIGINT"/>
+            <column name="type" type="INT"/>
             <column name="created_by" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
@@ -82,12 +83,10 @@
             <column name="required_update" type="BIT"/>
             <column name="runtime_version" type="VARCHAR(255)"/>
             <column name="timestamp" type="BIGINT"/>
-            <column name="type" type="INT"/>
             <column name="url_bundle" type="VARCHAR(255)"/>
             <column name="version_code" type="INT"/>
             <column name="version_name" type="VARCHAR(255)"/>
             <column name="application_id" type="BIGINT"/>
-            <column name="category_id" type="BIGINT"/>
             <column name="channel_id" type="BIGINT"/>
             <column name="created_by" type="VARCHAR(255)">
                 <constraints nullable="false"/>
@@ -113,17 +112,14 @@
         <addForeignKeyConstraint baseColumnNames="channel_id" baseTableName="db_version" constraintName="FK67c5gjwnmviopx7yof8ktq7uu" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_channel" validate="true"/>
     </changeSet>
     <changeSet author="Authentication" id="1792720716846-7">
-        <addForeignKeyConstraint baseColumnNames="category_id" baseTableName="db_version" constraintName="FK7wv5xkoyq4ctlifjnsyuof7ic" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_category" validate="true"/>
-    </changeSet>
-    <changeSet author="Authentication" id="1792720716846-8">
         <addForeignKeyConstraint baseColumnNames="project_id" baseTableName="db_application" constraintName="FKe1dj9n0xfto5h06gxel9co887" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_project" validate="true"/>
     </changeSet>
-    <changeSet author="Authentication" id="1792720716846-9">
+    <changeSet author="Authentication" id="1792720716846-8">
         <addColumn tableName="db_channel">
             <column name="json_key" type="VARCHAR(255)" afterColumn="name"/>
         </addColumn>
     </changeSet>
-    <changeSet author="Authentication" id="1792720716846-10">
+    <changeSet author="Authentication" id="1792720716846-9">
         <addColumn tableName="db_project">
             <column name="settings" type="LONGTEXT" afterColumn="description"/>
         </addColumn>
