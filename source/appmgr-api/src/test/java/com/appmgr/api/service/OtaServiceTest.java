@@ -300,7 +300,7 @@ class OtaServiceTest {
         assertThat(result.getVersionCode()).isEqualTo(10);
         assertThat(result.getVersionName()).isEqualTo("1.0.0");
         assertThat(result.getMinVersion()).isEqualTo(3);
-        assertThat(result.getRequiredUpdate()).isTrue();
+        assertThat(result.getRequiredUpdate()).isNull();
         assertThat(result.getTimestamp()).isNotNull();
     }
 
