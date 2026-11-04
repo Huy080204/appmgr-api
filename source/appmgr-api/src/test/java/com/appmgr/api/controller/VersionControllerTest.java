@@ -9,9 +9,6 @@ import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.version.CreateVersionForm;
 import com.appmgr.api.form.version.UpdateVersionForm;
-import com.appmgr.api.mapper.ApplicationMapper;
-import com.appmgr.api.mapper.ChannelMapper;
-import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Channel;
@@ -39,7 +36,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
 
 import jakarta.validation.ConstraintViolation;
@@ -633,7 +629,6 @@ class VersionControllerTest {
 
     @Test
     void shouldReturnVersionWhenIdExists() {
-        wireNestedMappers();
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
 
@@ -641,7 +636,6 @@ class VersionControllerTest {
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getData().getId()).isEqualTo(5L);
-        assertThat(result.getData().getApplication().getType()).isEqualTo(BaseConstant.VERSION_TYPE_BUNDLE);
         assertThat(result.getData().getVersionCode()).isEqualTo(10);
         assertThat(result.getData().getVersionName()).isEqualTo("1.0.0");
         assertThat(result.getMessage()).isEqualTo("Get version success");
@@ -696,7 +690,6 @@ class VersionControllerTest {
 
     @Test
     void shouldReturnPagedVersionsWhenListing() {
-        wireNestedMappers();
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         Page<Version> page = new PageImpl<>(List.of(version), PageRequest.of(0, 10), 1);
         when(versionRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
@@ -792,13 +785,6 @@ class VersionControllerTest {
         try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
             return factory.getValidator().validate(form);
         }
-    }
-
-    private void wireNestedMappers() {
-        ApplicationMapper applicationMapper = Mappers.getMapper(ApplicationMapper.class);
-        ReflectionTestUtils.setField(applicationMapper, "projectMapper", Mappers.getMapper(ProjectMapper.class));
-        ReflectionTestUtils.setField(versionMapper, "applicationMapper", applicationMapper);
-        ReflectionTestUtils.setField(versionMapper, "channelMapper", Mappers.getMapper(ChannelMapper.class));
     }
 
     private void stubLookups(Integer applicationType) {

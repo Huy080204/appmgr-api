@@ -1,9 +1,6 @@
 package com.appmgr.api.repository;
 
 import com.appmgr.api.model.Version;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -19,10 +16,6 @@ public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpec
     @Override
     @EntityGraph(attributePaths = {"application"})
     Optional<Version> findById(Long id);
-
-    @Override
-    @EntityGraph(attributePaths = {"application", "application.project", "channel"})
-    Page<Version> findAll(Specification<Version> spec, Pageable pageable);
 
     @Modifying
     @Transactional

@@ -17,8 +17,7 @@ import org.mapstruct.ReportingPolicy;
 import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
-        uses = {ApplicationMapper.class, ChannelMapper.class})
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface VersionMapper {
 
     @Mapping(source = "versionCode", target = "versionCode")
@@ -51,9 +50,6 @@ public interface VersionMapper {
     void updateFromUpdateForm(UpdateVersionForm updateVersionForm, @MappingTarget Version version);
 
     @Mapping(source = "id", target = "id")
-    @Mapping(source = "application", target = "application", qualifiedByName = "fromEntityToApplicationDto")
-    @Mapping(source = "channel", target = "channel", qualifiedByName = "adminGetMapping")
-    @Mapping(source = "application.type", target = "type")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
     @Mapping(source = "requiredUpdate", target = "requiredUpdate")
