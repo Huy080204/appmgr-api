@@ -24,6 +24,8 @@ public interface VersionMapper {
     @Mapping(source = "type", target = "type")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
+    @Mapping(source = "requiredUpdate", target = "requiredUpdate")
+    @Mapping(source = "minVersion", target = "minVersion")
     @Mapping(source = "runtimeVersion", target = "runtimeVersion")
     @BeanMapping(ignoreByDefault = true)
     @Named("fromCreateVersionFormToEntity")
@@ -36,6 +38,7 @@ public interface VersionMapper {
     @Mapping(source = "runtimeVersion", target = "runtimeVersion")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
+    @Mapping(source = "requiredUpdate", target = "requiredUpdate")
     @Mapping(source = "minVersion", target = "minVersion")
     @BeanMapping(ignoreByDefault = true)
     @Named("fromEntityToRepublishEntity")
@@ -43,6 +46,9 @@ public interface VersionMapper {
 
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
+    @Mapping(source = "requiredUpdate", target = "requiredUpdate")
+    @Mapping(source = "minVersion", target = "minVersion")
+    @Mapping(source = "runtimeVersion", target = "runtimeVersion")
     @BeanMapping(ignoreByDefault = true)
     @Named("updateFromUpdateVersionForm")
     void updateFromUpdateForm(UpdateVersionForm updateVersionForm, @MappingTarget Version version);

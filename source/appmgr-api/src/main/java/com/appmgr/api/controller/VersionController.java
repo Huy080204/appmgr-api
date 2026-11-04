@@ -107,13 +107,9 @@ public class VersionController extends ABasicController {
         version.setChannel(channel);
         version.setTimestamp(Instant.now().toEpochMilli());
         if (BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
-            version.setMinVersion(createVersionForm.getMinVersion());
-            version.setRequiredUpdate(createVersionForm.getRequiredUpdate());
             version.setUrlBundle(createVersionForm.getUrlBundle());
             versionRepository.save(version);
         } else if (BaseConstant.VERSION_TYPE_BUNDLE.equals(version.getType())) {
-            version.setMinVersion(createVersionForm.getMinVersion());
-            version.setRequiredUpdate(createVersionForm.getRequiredUpdate());
             versionRepository.save(version);
             versionFileService.storeVersionBundle(version, createVersionForm.getFile());
             version.setUrlBundle(buildBundleUrl(version));
@@ -150,14 +146,7 @@ public class VersionController extends ABasicController {
 
         versionMapper.updateFromUpdateForm(updateVersionForm, version);
         if (BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
-            version.setMinVersion(updateVersionForm.getMinVersion());
-            version.setRequiredUpdate(updateVersionForm.getRequiredUpdate());
             version.setUrlBundle(updateVersionForm.getUrlBundle());
-        } else if (BaseConstant.VERSION_TYPE_BUNDLE.equals(version.getType())) {
-            version.setMinVersion(updateVersionForm.getMinVersion());
-            version.setRequiredUpdate(updateVersionForm.getRequiredUpdate());
-        } else {
-            version.setRuntimeVersion(updateVersionForm.getRuntimeVersion());
         }
         versionRepository.save(version);
         return makeSuccessResponse("Update version success");
@@ -230,6 +219,9 @@ public class VersionController extends ABasicController {
     }
 
     private void validateMinVersion(Integer minVersion, Integer versionCode) {
+        if (versionCode == null) {
+            throw new BadRequestException("versionCode is required");
+        }
         if (minVersion == null) {
             throw new BadRequestException("minVersion is required");
         }
