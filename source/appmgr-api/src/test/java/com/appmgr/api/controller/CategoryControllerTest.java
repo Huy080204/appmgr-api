@@ -2,6 +2,7 @@ package com.appmgr.api.controller;
 
 import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ApiMessageDto;
+import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.ResponseListDto;
 import com.appmgr.api.dto.category.CategoryDto;
 import com.appmgr.api.exception.BadRequestException;
@@ -12,6 +13,7 @@ import com.appmgr.api.mapper.CategoryMapper;
 import com.appmgr.api.model.Category;
 import com.appmgr.api.model.criteria.CategoryCriteria;
 import com.appmgr.api.repository.CategoryRepository;
+import com.appmgr.api.repository.VersionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -43,6 +45,9 @@ class CategoryControllerTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private VersionRepository versionRepository;
 
     @Mock
     private CategoryMapper categoryMapper;
@@ -272,6 +277,7 @@ class CategoryControllerTest {
         category.setId(1L);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(versionRepository.existsByCategoryId(1L)).thenReturn(false);
 
         // Act
         ApiMessageDto<Void> result = categoryController.delete(1L);
@@ -279,5 +285,20 @@ class CategoryControllerTest {
         // Assert
         assertThat(result.getResult()).isTrue();
         verify(categoryRepository).deleteById(1L);
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenDeletingCategoryThatHasVersions() {
+        // Arrange
+        Category category = new Category();
+        category.setId(1L);
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(versionRepository.existsByCategoryId(1L)).thenReturn(true);
+
+        // Act + Assert
+        assertThatThrownBy(() -> categoryController.delete(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_ERROR_UNABLE_DELETE);
+        verify(categoryRepository, never()).deleteById(any());
     }
 }

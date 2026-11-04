@@ -73,13 +73,12 @@ public class OtaController extends ABasicController {
         return buildMultipartResponse(part);
     }
 
-    @GetMapping(value = "/assets/{appId}/{channelId}/{versionId}/**")
-    public ResponseEntity<Resource> assets(@PathVariable String appId, @PathVariable String channelId,
-                                           @PathVariable String versionId, HttpServletRequest request) {
+    @GetMapping(value = "/assets/{versionId}/**")
+    public ResponseEntity<Resource> assets(@PathVariable String versionId, HttpServletRequest request) {
         String pattern = String.valueOf(request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE));
         String path = String.valueOf(request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE));
         String filePath = PATH_MATCHER.extractPathWithinPattern(pattern, path);
-        OtaAsset otaAsset = otaSigningService.resolveAsset(appId, channelId, versionId, filePath);
+        OtaAsset otaAsset = otaSigningService.resolveAsset(versionId, filePath);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(otaAsset.getMediaType()))
                 .body(otaAsset.getResource());

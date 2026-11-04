@@ -108,7 +108,7 @@ class VersionControllerTest {
         assertThat(saved.getCategory().getId()).isEqualTo(2L);
         assertThat(saved.getChannel().getId()).isEqualTo(3L);
         assertThat(saved.getTimestamp()).isNotNull();
-        assertThat(saved.getUrlBundle()).isEqualTo("/v1/bundle/download-version?appId=1&channelId=3&versionId=5");
+        assertThat(saved.getUrlBundle()).isEqualTo("/v1/bundle/download-version?versionId=5");
     }
 
     @Test
@@ -182,7 +182,7 @@ class VersionControllerTest {
         verify(versionRepository, times(1)).save(versionCaptor.capture());
         assertThat(versionCaptor.getValue().getUrlBundle()).isEqualTo("https://store.example.com/app");
         assertThat(versionCaptor.getValue().getMinVersion()).isEqualTo(5);
-        verify(versionFileService, never()).resolveVersionDir(any(), any(), any());
+        verify(versionFileService, never()).resolveVersionDir(any(), any(), any(), any());
         verify(versionFileService, never()).storeVersionBundle(any(), any());
         verify(otaService, never()).publish(any(), any());
     }
@@ -412,7 +412,7 @@ class VersionControllerTest {
     @Test
     void shouldIgnoreUrlBundleWhenUpdatingBundleVersion() {
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
-        version.setUrlBundle("/v1/bundle/download-version?appId=1&channelId=3&versionId=5");
+        version.setUrlBundle("/v1/bundle/download-version?versionId=5");
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
         UpdateVersionForm form = updateForm();
         form.setMinVersion(9);
@@ -422,7 +422,7 @@ class VersionControllerTest {
 
         assertThat(result.getResult()).isTrue();
         verify(versionRepository).save(version);
-        assertThat(version.getUrlBundle()).isEqualTo("/v1/bundle/download-version?appId=1&channelId=3&versionId=5");
+        assertThat(version.getUrlBundle()).isEqualTo("/v1/bundle/download-version?versionId=5");
         assertThat(version.getMinVersion()).isEqualTo(9);
     }
 
@@ -538,7 +538,7 @@ class VersionControllerTest {
     void shouldDeleteVersionDirWhenDeletingBundleVersion() {
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
-        when(versionFileService.resolveVersionDir(1L, 3L, 5L)).thenReturn(VERSION_DIR);
+        when(versionFileService.resolveVersionDir(1L, 2L, 3L, 5L)).thenReturn(VERSION_DIR);
 
         ApiMessageDto<Void> result = controller.delete(5L);
 
@@ -559,7 +559,7 @@ class VersionControllerTest {
         assertThat(result.getResult()).isTrue();
         assertThat(result.getMessage()).isEqualTo("Delete version success");
         verify(versionRepository).delete(version);
-        verify(versionFileService, never()).resolveVersionDir(any(), any(), any());
+        verify(versionFileService, never()).resolveVersionDir(any(), any(), any(), any());
         verify(versionFileService, never()).deleteVersionDir(any());
     }
 

@@ -31,10 +31,11 @@ public class VersionFileService {
     @Value("${file.upload-dir}")
     private String rootDirectory;
 
-    public Path resolveVersionDir(Long appId, Long channelId, Long versionId) {
+    public Path resolveVersionDir(Long appId, Long categoryId, Long channelId, Long versionId) {
         return Paths.get(rootDirectory).toAbsolutePath().normalize()
                 .resolve(BaseConstant.VERSION_FOLDER)
                 .resolve(String.valueOf(appId))
+                .resolve(String.valueOf(categoryId))
                 .resolve(String.valueOf(channelId))
                 .resolve(String.valueOf(versionId));
     }
@@ -55,8 +56,8 @@ public class VersionFileService {
 
     public BundleFile resolveBundleFile(Version version) {
         try {
-            Path versionDir = resolveVersionDir(version.getApplication().getId(), version.getChannel().getId(),
-                    version.getId());
+            Path versionDir = resolveVersionDir(version.getApplication().getId(), version.getCategory().getId(),
+                    version.getChannel().getId(), version.getId());
             try (Stream<Path> entries = Files.list(versionDir)) {
                 Optional<Path> bundle = entries
                         .filter(entry -> Files.isRegularFile(entry)
@@ -78,7 +79,8 @@ public class VersionFileService {
 
     public void storeVersionBundle(Version version, MultipartFile file) {
         Application application = version.getApplication();
-        Path versionDir = resolveVersionDir(application.getId(), version.getChannel().getId(), version.getId());
+        Path versionDir = resolveVersionDir(application.getId(), version.getCategory().getId(),
+                version.getChannel().getId(), version.getId());
         String fileName = application.getName() + "_" + version.getVersionName() + "_"
                 + version.getVersionCode() + "." + resolveBundleExtension(file.getOriginalFilename());
         try {

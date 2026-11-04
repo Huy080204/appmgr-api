@@ -353,7 +353,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir(Long id) {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve(String.valueOf(id));
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("2").resolve("3").resolve(String.valueOf(id));
     }
 
     private static void writeFile(Path file, byte[] content) throws IOException {
@@ -364,7 +364,6 @@ class OtaServiceTest {
     private Version sourceVersion() {
         Version source = version();
         source.setId(5L);
-        source.setCategory(new Category());
         source.setRuntimeVersion("1.0");
         source.setMinVersion(3);
         source.setRequiredUpdate(true);
@@ -381,7 +380,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir() {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve("5");
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("2").resolve("3").resolve("5");
     }
 
     private void assertRootIsEmpty() throws IOException {
@@ -394,6 +393,8 @@ class OtaServiceTest {
         Application application = new Application();
         application.setId(1L);
         application.setName("MyApp");
+        Category category = new Category();
+        category.setId(2L);
         Channel channel = new Channel();
         channel.setId(3L);
         channel.setName("prod");
@@ -402,6 +403,7 @@ class OtaServiceTest {
         version.setVersionCode(10);
         version.setVersionName("1.0.0");
         version.setApplication(application);
+        version.setCategory(category);
         version.setChannel(channel);
         return version;
     }
