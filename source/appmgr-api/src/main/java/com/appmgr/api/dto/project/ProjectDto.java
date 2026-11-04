@@ -13,4 +13,6 @@ public class ProjectDto extends ABasicAdminDto {
     private String name;
     @Schema(name = "description")
     private String description;
+    @Schema(name = "settings")
+    private String settings;
 }

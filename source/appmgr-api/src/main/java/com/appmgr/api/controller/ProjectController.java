@@ -8,6 +8,7 @@ import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.project.CreateProjectForm;
 import com.appmgr.api.form.project.UpdateProjectForm;
+import com.appmgr.api.form.project.UpdateProjectSettingsForm;
 import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Project;
@@ -67,7 +68,7 @@ public class ProjectController extends ABasicController {
     public ApiMessageDto<ResponseListDto<List<ProjectDto>>> list(ProjectCriteria projectCriteria, @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Project> page = projectRepository.findAll(projectCriteria.getCriteria(), pageable);
         ResponseListDto<List<ProjectDto>> responseListDto =
-                makeResponseListDto(page, projectMapper::fromEntityListToProjectDtoList);
+                makeResponseListDto(page, projectMapper::fromEntityToProjectShortDtoList);
         return makeSuccessResponse(responseListDto, "Get list success");
     }
 
@@ -98,6 +99,17 @@ public class ProjectController extends ABasicController {
         projectMapper.updateEntityFromForm(updateProjectForm, project);
         projectRepository.save(project);
         return makeSuccessResponse("Update project success");
+    }
+
+    @PutMapping(value = "/update-settings", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('PRO_U')")
+    @Transactional
+    public ApiMessageDto<Void> updateSettings(@Valid @RequestBody UpdateProjectSettingsForm updateProjectSettingsForm, BindingResult bindingResult) {
+        Project project = projectRepository.findById(updateProjectSettingsForm.getId())
+                .orElseThrow(() -> new NotFoundException("Not found project!", ErrorCode.PROJECT_ERROR_NOT_FOUND));
+        project.setSettings(updateProjectSettingsForm.getSettings());
+        projectRepository.save(project);
+        return makeSuccessResponse("Update project settings success");
     }
 
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

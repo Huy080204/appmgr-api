@@ -34,6 +34,7 @@ public interface ProjectMapper {
     @Mapping(source = "id", target = "id")
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
+    @Mapping(source = "settings", target = "settings")
     @Mapping(source = "modifiedDate", target = "modifiedDate")
     @Mapping(source = "createdDate", target = "createdDate")
     @Mapping(source = "status", target = "status")
@@ -43,6 +44,17 @@ public interface ProjectMapper {
 
     @IterableMapping(elementTargetType = ProjectDto.class, qualifiedByName = "fromEntityToProjectDto")
     List<ProjectDto> fromEntityListToProjectDtoList(List<Project> projects);
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "name", target = "name")
+    @Mapping(source = "createdDate", target = "createdDate")
+    @Mapping(source = "status", target = "status")
+    @BeanMapping(ignoreByDefault = true)
+    @Named("fromEntityToProjectShortDto")
+    ProjectDto fromEntityToProjectShortDto(Project project);
+
+    @IterableMapping(elementTargetType = ProjectDto.class, qualifiedByName = "fromEntityToProjectShortDto")
+    List<ProjectDto> fromEntityToProjectShortDtoList(List<Project> projects);
 
     @Mapping(source = "id", target = "id")
     @BeanMapping(ignoreByDefault = true)

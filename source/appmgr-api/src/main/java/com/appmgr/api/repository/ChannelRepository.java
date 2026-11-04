@@ -6,5 +6,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface ChannelRepository extends JpaRepository<Channel, Long>, JpaSpecificationExecutor<Channel> {
     boolean existsByName(String name);
+    boolean existsByJsonKey(String jsonKey);
     boolean existsByNameAndIdNot(String name, Long id);
 }

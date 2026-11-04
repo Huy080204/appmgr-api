@@ -20,4 +20,7 @@ public class Project extends Auditable<String> {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "settings", columnDefinition = "LONGTEXT")
+    private String settings;
 }

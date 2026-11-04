@@ -13,4 +13,8 @@ public class CreateChannelForm {
     @NotBlank(message = "name cannot be blank")
     @Schema(name = "name", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
+
+    @NotBlank(message = "jsonKey cannot be blank")
+    @Schema(name = "jsonKey", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String jsonKey;
 }

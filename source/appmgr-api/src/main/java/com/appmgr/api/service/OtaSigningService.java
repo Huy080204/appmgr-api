@@ -4,10 +4,15 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.ota.OtaAsset;
 import com.appmgr.api.dto.ota.OtaPart;
+import com.appmgr.api.dto.project.ProjectKeyDto;
+import com.appmgr.api.dto.project.ProjectSettingsDto;
+import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Channel;
+import com.appmgr.api.model.Project;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.repository.ChannelRepository;
+import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,7 +27,6 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
-import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -54,25 +58,19 @@ public class OtaSigningService {
     @Autowired
     private VersionRepository versionRepository;
     @Autowired
+    private ProjectRepository projectRepository;
+    @Autowired
+    private ProjectSettingsService projectSettingsService;
+    @Autowired
     private VersionFileService versionFileService;
     @Autowired
     private ObjectMapper objectMapper;
 
     @Value("${server.uri}")
     private String serverUri;
-    @Value("${ota.private.key}")
-    private String privateKeyPem;
-    @Value("${ota.key-id}")
-    private String keyId;
 
-    private PrivateKey privateKey;
-
-    @PostConstruct
-    public void init() {
-        privateKey = loadPrivateKey();
-    }
-
-    public OtaPart buildManifest(Version version, Long appId, Long channelId, String platform) {
+    public OtaPart buildManifest(Version version, Long appId, Channel channel, String platform) {
+        Long channelId = channel.getId();
         Path versionDir = versionFileService.resolveVersionDir(appId, channelId, version.getId());
         JsonNode platformNode = readFileMetadata(versionDir).path(platform);
         if (!platformNode.isObject()) {
@@ -96,13 +94,13 @@ public class OtaSigningService {
         manifest.put("assets", assets);
         manifest.put("metadata", Collections.emptyMap());
         manifest.put("extra", Collections.emptyMap());
-        return sign(BaseConstant.OTA_PART_MANIFEST, toJson(manifest));
+        return sign(BaseConstant.OTA_PART_MANIFEST, toJson(manifest), appId, channel);
     }
 
-    public OtaPart buildNoUpdateDirective() {
+    public OtaPart buildNoUpdateDirective(Long appId, Channel channel) {
         Map<String, Object> directive = new LinkedHashMap<>();
         directive.put("type", BaseConstant.OTA_DIRECTIVE_NO_UPDATE);
-        return sign(BaseConstant.OTA_PART_DIRECTIVE, toJson(directive));
+        return sign(BaseConstant.OTA_PART_DIRECTIVE, toJson(directive), appId, channel);
     }
 
     public OtaAsset resolveAsset(String appId, String channelId, String versionId, String filePath) {
@@ -272,33 +270,56 @@ public class OtaSigningService {
         }
     }
 
-    private OtaPart sign(String name, String json) {
-        if (privateKey == null) {
-            return new OtaPart(name, json, null);
-        }
+    private OtaPart sign(String name, String json, Long appId, Channel channel) {
+        PrivateKey privateKey = loadPrivateKey(appId, channel);
         try {
             Signature signature = Signature.getInstance(BaseConstant.OTA_SIGNATURE_JCA_ALGORITHM);
             signature.initSign(privateKey);
             signature.update(json.getBytes(StandardCharsets.UTF_8));
             String encoded = Base64.getEncoder().encodeToString(signature.sign());
-            return new OtaPart(name, json, "sig=\"" + encoded + "\", keyid=\"" + keyId + "\", alg=\""
+            return new OtaPart(name, json, "sig=\"" + encoded + "\", keyid=\"" + channel.getJsonKey() + "\", alg=\""
                     + BaseConstant.OTA_SIGNATURE_ALGORITHM + "\"");
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Failed to sign OTA payload", e);
         }
     }
 
-    private PrivateKey loadPrivateKey() {
-        if (privateKeyPem.trim().isEmpty()) {
-            log.warn("ota.private.key is not configured, OTA responses will be unsigned");
-            return null;
+    private PrivateKey loadPrivateKey(Long appId, Channel channel) {
+        String jsonKey = channel.getJsonKey();
+        if (jsonKey == null || jsonKey.isBlank()) {
+            throw signingKeyNotFound();
         }
+        Project project = projectRepository.findByApplicationId(appId).orElseThrow(this::signingKeyNotFound);
+        ProjectSettingsDto settings;
         try {
-            byte[] der = Base64.getMimeDecoder().decode(privateKeyPem.trim());
+            settings = projectSettingsService.fromJson(project.getSettings());
+        } catch (IllegalStateException e) {
+            throw signingKeyNotFound();
+        }
+        if (settings == null || settings.getKeys() == null) {
+            throw signingKeyNotFound();
+        }
+        ProjectKeyDto key = settings.getKeys().stream()
+                .filter(candidate -> candidate != null && jsonKey.equals(candidate.getKeyId()))
+                .findFirst()
+                .orElse(null);
+        if (key == null || key.getPrivateKey() == null || key.getPrivateKey().isBlank()) {
+            throw signingKeyNotFound();
+        }
+        String base64 = key.getPrivateKey()
+                .replaceAll("-----[A-Z ]+-----", "")
+                .replaceAll("\\s", "");
+        try {
+            byte[] der = Base64.getDecoder().decode(base64);
             return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            log.warn("Cannot load OTA private key ({}), OTA responses will be unsigned", e.getClass().getSimpleName());
-            return null;
+            log.warn("Cannot parse signing key for channel {} ({})", jsonKey, e.getClass().getSimpleName());
+            throw signingKeyNotFound();
         }
+    }
+
+    private BadRequestException signingKeyNotFound() {
+        return new BadRequestException("Signing key not found for channel!",
+                ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
     }
 }

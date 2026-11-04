@@ -11,4 +11,6 @@ import lombok.Setter;
 public class ChannelDto extends ABasicAdminDto {
     @Schema(name = "name")
     private String name;
+    @Schema(name = "jsonKey")
+    private String jsonKey;
 }

@@ -20,6 +20,7 @@ import java.util.List;
 public interface ChannelMapper {
 
     @Mapping(source = "name", target = "name")
+    @Mapping(source = "jsonKey", target = "jsonKey")
     @BeanMapping(ignoreByDefault = true)
     @Named("adminCreateMapping")
     Channel fromFormToEntity(CreateChannelForm createChannelForm);
@@ -31,6 +32,7 @@ public interface ChannelMapper {
 
     @Mapping(source = "id", target = "id")
     @Mapping(source = "name", target = "name")
+    @Mapping(source = "jsonKey", target = "jsonKey")
     @Mapping(source = "modifiedDate", target = "modifiedDate")
     @Mapping(source = "createdDate", target = "createdDate")
     @Mapping(source = "status", target = "status")

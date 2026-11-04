@@ -73,6 +73,8 @@ public class ErrorCode {
     public static final String CHANNEL_ERROR_NOT_FOUND = "ERROR-CHANNEL-000";
     public static final String CHANNEL_ERROR_NAME_EXISTED = "ERROR-CHANNEL-001";
     public static final String CHANNEL_ERROR_UNABLE_DELETE = "ERROR-CHANNEL-002";
+    public static final String CHANNEL_ERROR_JSON_KEY_EXISTED = "ERROR-CHANNEL-003";
+    public static final String CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND = "ERROR-CHANNEL-004";
 
     /**
      * Version error code

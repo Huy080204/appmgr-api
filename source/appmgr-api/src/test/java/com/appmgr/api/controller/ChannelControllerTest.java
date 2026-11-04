@@ -15,9 +15,13 @@ import com.appmgr.api.model.criteria.ChannelCriteria;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.impl.UserServiceImpl;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -32,6 +36,7 @@ import org.springframework.validation.BindingResult;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -229,5 +234,99 @@ class ChannelControllerTest {
         assertThat(result.getData().getContent().get(0).getId()).isEqualTo(1L);
         assertThat(result.getData().getTotalElements()).isEqualTo(1L);
         assertThat(result.getMessage()).isEqualTo("Get auto complete channels success");
+    }
+
+    @Test
+    void shouldSaveJsonKeyWhenCreateChannel() {
+        CreateChannelForm form = new CreateChannelForm();
+        form.setName("Production");
+        form.setJsonKey("prod");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(channelRepository.existsByName("Production")).thenReturn(false);
+        when(channelRepository.existsByJsonKey("prod")).thenReturn(false);
+
+        ApiMessageDto<ChannelDto> result = controller.create(form, bindingResult);
+
+        ArgumentCaptor<Channel> captor = ArgumentCaptor.forClass(Channel.class);
+        verify(channelRepository).save(captor.capture());
+        assertThat(result.getResult()).isTrue();
+        assertThat(captor.getValue().getJsonKey()).isEqualTo("prod");
+    }
+
+    @Test
+    void shouldRejectBlankJsonKeyWhenValidatingCreateForm() {
+        CreateChannelForm form = new CreateChannelForm();
+        form.setName("Production");
+        form.setJsonKey(" ");
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+        Set<ConstraintViolation<CreateChannelForm>> violations = validator.validate(form);
+
+        assertThat(violations).anyMatch(v -> "jsonKey".equals(v.getPropertyPath().toString()));
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenCreateJsonKeyExisted() {
+        CreateChannelForm form = new CreateChannelForm();
+        form.setName("Production");
+        form.setJsonKey("prod");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(channelRepository.existsByName("Production")).thenReturn(false);
+        when(channelRepository.existsByJsonKey("prod")).thenReturn(true);
+
+        assertThatThrownBy(() -> controller.create(form, bindingResult))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_JSON_KEY_EXISTED);
+        verify(channelRepository, never()).save(any(Channel.class));
+    }
+
+    @Test
+    void shouldKeepJsonKeyWhenUpdateChannel() {
+        Channel entity = new Channel();
+        entity.setId(1L);
+        entity.setName("Old");
+        entity.setJsonKey("prod");
+        UpdateChannelForm form = new UpdateChannelForm();
+        form.setId(1L);
+        form.setName("New");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(channelRepository.existsByNameAndIdNot("New", 1L)).thenReturn(false);
+
+        controller.update(form, bindingResult);
+
+        assertThat(entity.getJsonKey()).isEqualTo("prod");
+        verify(channelRepository).save(entity);
+    }
+
+    @Test
+    void shouldReturnJsonKeyWhenGetChannel() {
+        Channel entity = new Channel();
+        entity.setId(1L);
+        entity.setName("Production");
+        entity.setJsonKey("prod");
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(entity));
+
+        ApiMessageDto<ChannelDto> result = controller.get(1L);
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getData().getJsonKey()).isEqualTo("prod");
+    }
+
+    @Test
+    void shouldReturnJsonKeyWhenListChannels() {
+        Channel entity = new Channel();
+        entity.setId(1L);
+        entity.setName("Production");
+        entity.setJsonKey("prod");
+        Page<Channel> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
+        when(channelRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+
+        ApiMessageDto<ResponseListDto<List<ChannelDto>>> result =
+                controller.list(new ChannelCriteria(), PageRequest.of(0, 10));
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getData().getContent()).hasSize(1);
+        assertThat(result.getData().getContent().get(0).getJsonKey()).isEqualTo("prod");
     }
 }
