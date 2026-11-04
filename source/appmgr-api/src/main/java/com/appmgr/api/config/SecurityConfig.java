@@ -69,7 +69,7 @@ public class SecurityConfig {
                 "Accept", "Origin", "Content-Type", "Depth", "User-Agent", "If-Modified-Since",
                 "Cache-Control", "Authorization", "X-Req", "X-File-Size", "X-Requested-With", "X-File-Name", "Content-Disposition",
                 "Access-Control-Allow-Headers", "Access-Control-Request-Method", "Access-Control-Request-Headers",
-                "X-Client-Type", "x-app-id", "x-category-id",
+                "X-Client-Type", "x-app-id",
                 "expo-channel-name", "expo-platform", "expo-runtime-version",
                 "expo-current-update-id", "expo-embedded-update-id", "expo-protocol-version",
                 "expo-expect-signature", "expo-recent-failed-update-ids", "expo-extra-params",

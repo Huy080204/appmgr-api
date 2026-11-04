@@ -1,0 +1,24 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="Authentication" id="1793777468050-1">
+        <dropForeignKeyConstraint baseTableName="db_version" constraintName="FK7wv5xkoyq4ctlifjnsyuof7ic"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1793777468050-2">
+        <dropColumn columnName="category_id" tableName="db_version"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1793777468050-3">
+        <dropColumn columnName="type" tableName="db_version"/>
+    </changeSet>
+    <changeSet author="Authentication" id="1793777468050-4">
+        <addColumn tableName="db_application">
+            <column name="type" type="INT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="Authentication" id="1793777468050-5">
+        <sql>DELETE FROM db_permission_group WHERE permission_id IN (SELECT id FROM db_permission WHERE p_code IN ('CAT_C','CAT_V','CAT_L','CAT_D','CAT_U'))</sql>
+        <sql>DELETE FROM db_permission WHERE p_code IN ('CAT_C','CAT_V','CAT_L','CAT_D','CAT_U')</sql>
+    </changeSet>
+    <changeSet author="Authentication" id="1793777468050-6">
+        <dropTable tableName="db_category"/>
+    </changeSet>
+</databaseChangeLog>

@@ -17,11 +17,9 @@ import org.mapstruct.ReportingPolicy;
 import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
-        uses = {ApplicationMapper.class, CategoryMapper.class, ChannelMapper.class})
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface VersionMapper {
 
-    @Mapping(source = "type", target = "type")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
     @Mapping(source = "requiredUpdate", target = "requiredUpdate")
@@ -31,9 +29,7 @@ public interface VersionMapper {
     @Named("fromCreateVersionFormToEntity")
     Version fromCreateForm(CreateVersionForm createVersionForm);
 
-    @Mapping(source = "type", target = "type")
     @Mapping(source = "application", target = "application")
-    @Mapping(source = "category", target = "category")
     @Mapping(source = "channel", target = "channel")
     @Mapping(source = "runtimeVersion", target = "runtimeVersion")
     @Mapping(source = "versionCode", target = "versionCode")
@@ -54,10 +50,6 @@ public interface VersionMapper {
     void updateFromUpdateForm(UpdateVersionForm updateVersionForm, @MappingTarget Version version);
 
     @Mapping(source = "id", target = "id")
-    @Mapping(source = "application", target = "application", qualifiedByName = "fromEntityToApplicationDto")
-    @Mapping(source = "category", target = "category", qualifiedByName = "fromEntityToCategoryDto")
-    @Mapping(source = "channel", target = "channel", qualifiedByName = "adminGetMapping")
-    @Mapping(source = "type", target = "type")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
     @Mapping(source = "requiredUpdate", target = "requiredUpdate")
@@ -82,7 +74,7 @@ public interface VersionMapper {
     @Named("fromEntityToVersionDtoList")
     List<VersionDto> fromEntitiesToDtoList(List<Version> versions);
 
-    @Mapping(source = "type", target = "type")
+    @Mapping(source = "application.type", target = "type")
     @Mapping(source = "versionCode", target = "versionCode")
     @Mapping(source = "versionName", target = "versionName")
     @Mapping(source = "minVersion", target = "minVersion")

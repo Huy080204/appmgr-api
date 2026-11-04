@@ -8,9 +8,9 @@ import com.appmgr.api.dto.bundle.CheckVersionDto;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.mapper.VersionMapper;
+import com.appmgr.api.model.Application;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.VersionFileService;
@@ -44,7 +44,6 @@ class BundleControllerTest {
 
     @Mock private VersionRepository versionRepository;
     @Mock private ApplicationRepository applicationRepository;
-    @Mock private CategoryRepository categoryRepository;
     @Mock private ChannelRepository channelRepository;
     @Mock private VersionFileService versionFileService;
     @Mock private UserServiceImpl userService;
@@ -57,28 +56,17 @@ class BundleControllerTest {
     void shouldThrowBadRequestWhenApplicationNotFoundOnCheckVersion() {
         when(applicationRepository.existsById(1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> controller.checkVersion(1L, 2L, 3L))
+        assertThatThrownBy(() -> controller.checkVersion(1L, 3L))
                 .isInstanceOf(BadRequestException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.APPLICATION_ERROR_NOT_FOUND);
     }
 
     @Test
-    void shouldThrowBadRequestWhenCategoryNotFoundOnCheckVersion() {
-        when(applicationRepository.existsById(1L)).thenReturn(true);
-        when(categoryRepository.existsById(2L)).thenReturn(false);
-
-        assertThatThrownBy(() -> controller.checkVersion(1L, 2L, 3L))
-                .isInstanceOf(BadRequestException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_ERROR_NOT_FOUND);
-    }
-
-    @Test
     void shouldThrowBadRequestWhenChannelNotFoundOnCheckVersion() {
         when(applicationRepository.existsById(1L)).thenReturn(true);
-        when(categoryRepository.existsById(2L)).thenReturn(true);
         when(channelRepository.existsById(3L)).thenReturn(false);
 
-        assertThatThrownBy(() -> controller.checkVersion(1L, 2L, 3L))
+        assertThatThrownBy(() -> controller.checkVersion(1L, 3L))
                 .isInstanceOf(BadRequestException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_NOT_FOUND);
     }
@@ -87,56 +75,56 @@ class BundleControllerTest {
     void shouldReturnMappedFieldsWhenActiveVersionExists() {
         Version version = new Version();
         version.setId(10L);
-        version.setType(BaseConstant.VERSION_TYPE_BUNDLE);
+        version.setApplication(application(BaseConstant.VERSION_TYPE_STORE));
         version.setVersionCode(10);
         version.setVersionName("1.0");
         version.setMinVersion(5);
         version.setRequiredUpdate(true);
         version.setUrlBundle("https://example.com/bundle");
         stubParentsExist();
-        when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(
-                1L, 2L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(
+                1L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(version));
 
-        ApiMessageDto<CheckVersionDto> result = controller.checkVersion(1L, 2L, 3L);
+        ApiMessageDto<CheckVersionDto> result = controller.checkVersion(1L, 3L);
 
         assertThat(result.getResult()).isTrue();
-        assertThat(result.getData().getType()).isEqualTo(BaseConstant.VERSION_TYPE_BUNDLE);
+        assertThat(result.getData().getType()).isEqualTo(BaseConstant.VERSION_TYPE_STORE);
         assertThat(result.getData().getVersionCode()).isEqualTo(10);
         assertThat(result.getData().getVersionName()).isEqualTo("1.0");
         assertThat(result.getData().getMinVersion()).isEqualTo(5);
         assertThat(result.getData().getRequiredUpdate()).isTrue();
         assertThat(result.getData().getUrlBundle()).isEqualTo("https://example.com/bundle");
         assertThat(result.getMessage()).isEqualTo("Check version success");
-        verify(versionRepository).findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(
-                1L, 2L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE);
+        verify(versionRepository).findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(
+                1L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE);
     }
 
     @Test
     void shouldReturnNullDataWhenNoActiveVersionExists() {
         stubParentsExist();
-        when(versionRepository.findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(
-                1L, 2L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(
+                1L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
-        ApiMessageDto<CheckVersionDto> result = controller.checkVersion(1L, 2L, 3L);
+        ApiMessageDto<CheckVersionDto> result = controller.checkVersion(1L, 3L);
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getData()).isNull();
-        verify(versionRepository).findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(
-                1L, 2L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE);
+        verify(versionRepository).findFirstByApplicationIdAndChannelIdAndApplicationTypeInAndStatusOrderByTimestampDesc(
+                1L, 3L, BaseConstant.BUNDLE_VERSION_TYPES, BaseConstant.STATUS_ACTIVE);
     }
 
     @Test
     void shouldThrowNotFoundWhenNoActiveBundleVersionMatchesOnDownload() {
-        when(versionRepository.findByIdAndTypeAndStatus(
+        when(versionRepository.findByIdAndApplicationTypeAndStatus(
                 10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.downloadVersion(10L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
-        verify(versionRepository).findByIdAndTypeAndStatus(
+        verify(versionRepository).findByIdAndApplicationTypeAndStatus(
                 10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE);
     }
 
@@ -219,18 +207,24 @@ class BundleControllerTest {
 
     private void stubParentsExist() {
         when(applicationRepository.existsById(1L)).thenReturn(true);
-        when(categoryRepository.existsById(2L)).thenReturn(true);
         when(channelRepository.existsById(3L)).thenReturn(true);
     }
 
     private Version stubActiveBundleVersion() {
         Version version = new Version();
         version.setId(10L);
-        version.setType(BaseConstant.VERSION_TYPE_BUNDLE);
-        when(versionRepository.findByIdAndTypeAndStatus(
+        version.setApplication(application(BaseConstant.VERSION_TYPE_BUNDLE));
+        when(versionRepository.findByIdAndApplicationTypeAndStatus(
                 10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(version));
         return version;
+    }
+
+    private Application application(Integer type) {
+        Application application = new Application();
+        application.setId(1L);
+        application.setType(type);
+        return application;
     }
 
     private Path writeFile(String name, String content) throws IOException {

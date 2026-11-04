@@ -1,5 +1,6 @@
 package com.appmgr.api.controller;
 
+import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ApiMessageDto;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.application.ApplicationConfigDto;
@@ -12,11 +13,9 @@ import com.appmgr.api.form.application.UpdateApplicationForm;
 import com.appmgr.api.mapper.ApplicationMapper;
 import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.model.Application;
-import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
@@ -24,6 +23,7 @@ import com.appmgr.api.service.ProjectSettingsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -59,9 +59,6 @@ class ApplicationControllerTest {
 
     @Mock
     private VersionRepository versionRepository;
-
-    @Mock
-    private CategoryRepository categoryRepository;
 
     @Mock
     private ChannelRepository channelRepository;
@@ -103,15 +100,18 @@ class ApplicationControllerTest {
         CreateApplicationForm form = new CreateApplicationForm();
         form.setName("App A");
         form.setProjectId(1L);
+        form.setType(BaseConstant.VERSION_TYPE_OTA);
         BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project(1L)));
         when(applicationRepository.existsByNameAndProjectId("App A", 1L)).thenReturn(false);
+        ArgumentCaptor<Application> captor = ArgumentCaptor.forClass(Application.class);
 
         ApiMessageDto<ApplicationDto> result = controller.create(form, bindingResult);
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getMessage()).isEqualTo("Create application success");
-        verify(applicationRepository).save(any(Application.class));
+        verify(applicationRepository).save(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo(BaseConstant.VERSION_TYPE_OTA);
     }
 
     @Test
@@ -152,6 +152,7 @@ class ApplicationControllerTest {
         ReflectionTestUtils.setField(applicationMapper, "projectMapper", Mappers.getMapper(ProjectMapper.class));
         Application existing = application(5L, "App A", project);
         existing.setDescription("Desc A");
+        existing.setType(BaseConstant.VERSION_TYPE_STORE);
         when(applicationRepository.findById(5L)).thenReturn(Optional.of(existing));
 
         ApiMessageDto<ApplicationDto> result = controller.get(5L);
@@ -161,6 +162,7 @@ class ApplicationControllerTest {
         assertThat(result.getData().getId()).isEqualTo(5L);
         assertThat(result.getData().getName()).isEqualTo("App A");
         assertThat(result.getData().getDescription()).isEqualTo("Desc A");
+        assertThat(result.getData().getType()).isEqualTo(BaseConstant.VERSION_TYPE_STORE);
         assertThat(result.getData().getProject().getId()).isEqualTo(1L);
         assertThat(result.getData().getProject().getName()).isEqualTo("Project A");
     }
@@ -205,6 +207,21 @@ class ApplicationControllerTest {
 
         assertThat(existing.getProject()).isSameAs(originalProject);
         verify(projectRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void shouldKeepTypeUnchangedWhenUpdate() {
+        Application existing = application(5L, "Old", project(1L));
+        existing.setType(BaseConstant.VERSION_TYPE_BUNDLE);
+        UpdateApplicationForm form = updateForm(5L, "New");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(applicationRepository.existsByNameAndProjectIdAndIdNot("New", 1L, 5L)).thenReturn(false);
+
+        controller.update(form, bindingResult);
+
+        assertThat(existing.getType()).isEqualTo(BaseConstant.VERSION_TYPE_BUNDLE);
+        verify(applicationRepository).save(existing);
     }
 
     @Test
@@ -290,12 +307,6 @@ class ApplicationControllerTest {
         return channel;
     }
 
-    private Category category(Long id) {
-        Category category = new Category();
-        category.setId(id);
-        return category;
-    }
-
     @Test
     void shouldReturnConfigWhenAllIdsExist() {
         Project project = project(1L);
@@ -303,15 +314,13 @@ class ApplicationControllerTest {
         key.setKeyId("key-1");
         key.setPublicKey("pub-1");
         when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project)));
-        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
         when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, "key-1")));
         when(projectSettingsService.findKey(project, "key-1")).thenReturn(key);
 
-        ApiMessageDto<ApplicationConfigDto> result = controller.getConfig(5L, 6L, 7L);
+        ApiMessageDto<ApplicationConfigDto> result = controller.getConfig(5L, 7L);
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getData().getAppId()).isEqualTo(5L);
-        assertThat(result.getData().getCategoryId()).isEqualTo(6L);
         assertThat(result.getData().getChannelId()).isEqualTo(7L);
         assertThat(result.getData().getKeyId()).isEqualTo("key-1");
         assertThat(result.getData().getPublicKey()).isEqualTo("pub-1");
@@ -321,28 +330,17 @@ class ApplicationControllerTest {
     void shouldThrowNotFoundWhenConfigApplicationDoesNotExist() {
         when(applicationRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+        assertThatThrownBy(() -> controller.getConfig(5L, 7L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.APPLICATION_ERROR_NOT_FOUND);
     }
 
     @Test
-    void shouldThrowNotFoundWhenConfigCategoryDoesNotExist() {
-        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
-        when(categoryRepository.findById(6L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
-                .isInstanceOf(NotFoundException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_ERROR_NOT_FOUND);
-    }
-
-    @Test
     void shouldThrowNotFoundWhenConfigChannelDoesNotExist() {
         when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
-        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
         when(channelRepository.findById(7L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+        assertThatThrownBy(() -> controller.getConfig(5L, 7L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_NOT_FOUND);
     }
@@ -350,10 +348,9 @@ class ApplicationControllerTest {
     @Test
     void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsBlank() {
         when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
-        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
         when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, "  ")));
 
-        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+        assertThatThrownBy(() -> controller.getConfig(5L, 7L))
                 .isInstanceOf(BadRequestException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
     }
@@ -361,10 +358,9 @@ class ApplicationControllerTest {
     @Test
     void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsNull() {
         when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
-        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
         when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, null)));
 
-        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+        assertThatThrownBy(() -> controller.getConfig(5L, 7L))
                 .isInstanceOf(BadRequestException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
     }

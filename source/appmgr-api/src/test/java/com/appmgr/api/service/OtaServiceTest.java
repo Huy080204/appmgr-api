@@ -4,7 +4,6 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.model.Application;
-import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Version;
@@ -292,9 +291,7 @@ class OtaServiceTest {
         Version result = otaService.republish(source);
 
         assertThat(result).isNotSameAs(source);
-        assertThat(result.getType()).isEqualTo(BaseConstant.VERSION_TYPE_OTA);
         assertThat(result.getApplication()).isSameAs(source.getApplication());
-        assertThat(result.getCategory()).isSameAs(source.getCategory());
         assertThat(result.getChannel()).isSameAs(source.getChannel());
         assertThat(result.getRuntimeVersion()).isEqualTo("1.0");
         assertThat(result.getVersionCode()).isEqualTo(10);
@@ -352,7 +349,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir(Long id) {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("2").resolve("3").resolve(String.valueOf(id));
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve(String.valueOf(id));
     }
 
     private static void writeFile(Path file, byte[] content) throws IOException {
@@ -379,7 +376,7 @@ class OtaServiceTest {
     }
 
     private Path versionDir() {
-        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("2").resolve("3").resolve("5");
+        return root.resolve(BaseConstant.VERSION_FOLDER).resolve("1").resolve("3").resolve("5");
     }
 
     private void assertRootIsEmpty() throws IOException {
@@ -392,17 +389,14 @@ class OtaServiceTest {
         Application application = new Application();
         application.setId(1L);
         application.setName("MyApp");
-        Category category = new Category();
-        category.setId(2L);
+        application.setType(BaseConstant.VERSION_TYPE_OTA);
         Channel channel = new Channel();
         channel.setId(3L);
         channel.setName("prod");
         Version version = new Version();
-        version.setType(BaseConstant.VERSION_TYPE_OTA);
         version.setVersionCode(10);
         version.setVersionName("1.0.0");
         version.setApplication(application);
-        version.setCategory(category);
         version.setChannel(channel);
         return version;
     }

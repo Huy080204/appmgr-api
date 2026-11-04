@@ -55,13 +55,6 @@ public class ErrorCode {
     public static final String GROUP_PERMISSION_ERROR_NAME_EXIST = "ERROR-GROUP-PERMISSION-001";
 
     /**
-     * Category error code
-     */
-    public static final String CATEGORY_ERROR_NAME_EXIST = "ERROR-CATEGORY-000";
-    public static final String CATEGORY_ERROR_NOT_FOUND = "ERROR-CATEGORY-001";
-    public static final String CATEGORY_ERROR_UNABLE_DELETE = "ERROR-CATEGORY-002";
-
-    /**
      * Setting error code
      */
     public static final String SETTING_ERROR_NOT_FOUND = "ERROR-SETTING-000";

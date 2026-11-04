@@ -9,7 +9,6 @@ import com.appmgr.api.dto.project.ProjectSettingsDto;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Application;
-import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.Version;
@@ -61,7 +60,6 @@ class OtaSigningServiceTest {
     private static final String SETTINGS_JSON = "{\"keys\":{}}";
     private static final KeyPair KEY_PAIR = generateKeyPair();
     private static final Long APP_ID = 100L;
-    private static final Long CATEGORY_ID = 5L;
     private static final Long CHANNEL_ID = 7L;
     private static final Long VERSION_ID = 300L;
     private static final String CHANNEL_NAME = "production";
@@ -691,7 +689,7 @@ class OtaSigningServiceTest {
 
     @Test
     void shouldThrowNotFoundWhenVersionIsAbsentOrNotActiveOtaVersion() {
-        when(versionRepository.findByIdAndTypeAndStatus(
+        when(versionRepository.findByIdAndApplicationTypeAndStatus(
                 VERSION_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
@@ -865,14 +863,11 @@ class OtaSigningServiceTest {
     private Version buildVersion() {
         Application application = new Application();
         application.setId(APP_ID);
-        Category category = new Category();
-        category.setId(CATEGORY_ID);
+        application.setType(BaseConstant.VERSION_TYPE_OTA);
         Version version = new Version();
         version.setApplication(application);
-        version.setCategory(category);
         version.setChannel(buildChannel());
         version.setId(VERSION_ID);
-        version.setType(BaseConstant.VERSION_TYPE_OTA);
         version.setStatus(BaseConstant.STATUS_ACTIVE);
         version.setTimestamp(TIMESTAMP);
         version.setRuntimeVersion(RUNTIME_VERSION);
@@ -881,13 +876,13 @@ class OtaSigningServiceTest {
     }
 
     private void stubLookup() {
-        when(versionRepository.findByIdAndTypeAndStatus(
+        when(versionRepository.findByIdAndApplicationTypeAndStatus(
                 VERSION_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(buildVersion()));
     }
 
     private void stubVersionDir() {
-        when(versionFileService.resolveVersionDir(APP_ID, CATEGORY_ID, CHANNEL_ID, VERSION_ID)).thenReturn(versionDir);
+        when(versionFileService.resolveVersionDir(APP_ID, CHANNEL_ID, VERSION_ID)).thenReturn(versionDir);
     }
 
     private void writeStandardFixture() throws IOException {

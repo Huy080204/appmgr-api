@@ -16,7 +16,6 @@ import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.criteria.ApplicationCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
@@ -62,9 +61,6 @@ public class ApplicationController extends ABasicController {
     private VersionRepository versionRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
     private ChannelRepository channelRepository;
 
     @Autowired
@@ -81,11 +77,9 @@ public class ApplicationController extends ABasicController {
     @GetMapping(value = "/get-config", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('APP_V')")
     @Transactional(readOnly = true)
-    public ApiMessageDto<ApplicationConfigDto> getConfig(@RequestParam Long applicationId, @RequestParam Long categoryId, @RequestParam Long channelId) {
+    public ApiMessageDto<ApplicationConfigDto> getConfig(@RequestParam Long applicationId, @RequestParam Long channelId) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new NotFoundException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
-        categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new NotFoundException("Not found category!", ErrorCode.CATEGORY_ERROR_NOT_FOUND));
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
         if (channel.getJsonKey() == null || channel.getJsonKey().isBlank()) {
@@ -95,7 +89,6 @@ public class ApplicationController extends ABasicController {
 
         ApplicationConfigDto config = new ApplicationConfigDto();
         config.setAppId(applicationId);
-        config.setCategoryId(categoryId);
         config.setChannelId(channelId);
         config.setKeyId(key.getKeyId());
         config.setPublicKey(key.getPublicKey());

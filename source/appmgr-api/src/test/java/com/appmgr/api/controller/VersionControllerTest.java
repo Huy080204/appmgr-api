@@ -9,18 +9,12 @@ import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.version.CreateVersionForm;
 import com.appmgr.api.form.version.UpdateVersionForm;
-import com.appmgr.api.mapper.ApplicationMapper;
-import com.appmgr.api.mapper.CategoryMapper;
-import com.appmgr.api.mapper.ChannelMapper;
-import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.mapper.VersionMapper;
 import com.appmgr.api.model.Application;
-import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.model.criteria.VersionCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
-import com.appmgr.api.repository.CategoryRepository;
 import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.appmgr.api.service.OtaService;
@@ -42,7 +36,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
 
 import jakarta.validation.ConstraintViolation;
@@ -73,7 +66,6 @@ class VersionControllerTest {
 
     @Mock private VersionRepository versionRepository;
     @Mock private ApplicationRepository applicationRepository;
-    @Mock private CategoryRepository categoryRepository;
     @Mock private ChannelRepository channelRepository;
     @Mock private VersionFileService versionFileService;
     @Mock private OtaService otaService;
@@ -83,7 +75,7 @@ class VersionControllerTest {
 
     @Test
     void shouldCreateBundleVersionWhenFormIsValid() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         MockMultipartFile file = bundleFile();
         CreateVersionForm form = bundleForm(file);
         when(versionFileService.resolveBundleExtension("app.tar.gz")).thenReturn("tar.gz");
@@ -105,7 +97,7 @@ class VersionControllerTest {
         assertThat(saved.getVersionCode()).isEqualTo(10);
         assertThat(saved.getMinVersion()).isEqualTo(5);
         assertThat(saved.getApplication().getId()).isEqualTo(1L);
-        assertThat(saved.getCategory().getId()).isEqualTo(2L);
+        assertThat(saved.getApplication().getType()).isEqualTo(BaseConstant.VERSION_TYPE_BUNDLE);
         assertThat(saved.getChannel().getId()).isEqualTo(3L);
         assertThat(saved.getTimestamp()).isNotNull();
         assertThat(saved.getUrlBundle()).isEqualTo("/v1/bundle/download-version?versionId=5");
@@ -114,7 +106,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFileInvalidWhenBundleExtensionIsNotSupported() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(new MockMultipartFile("file", "app.rar", null, new byte[]{1}));
         when(versionFileService.resolveBundleExtension("app.rar")).thenReturn(null);
 
@@ -126,7 +118,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFileInvalidWhenBundleFileIsEmpty() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(new MockMultipartFile("file", "app.tar.gz", null, new byte[0]));
         when(versionFileService.resolveBundleExtension("app.tar.gz")).thenReturn("tar.gz");
 
@@ -138,7 +130,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFileInvalidWhenBundleFileIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(null);
 
         assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
@@ -148,7 +140,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenBundleMinVersionIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(bundleFile());
         form.setMinVersion(null);
 
@@ -159,7 +151,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowBadRequestWhenBundleMinVersionIsNotLessThanVersionCode() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(bundleFile());
         form.setMinVersion(10);
 
@@ -170,7 +162,7 @@ class VersionControllerTest {
 
     @Test
     void shouldCreateStoreVersionWithoutFileHandlingWhenFormIsValid() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         stubSaveAssignsId();
         CreateVersionForm form = storeForm();
         ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
@@ -184,14 +176,14 @@ class VersionControllerTest {
         assertThat(versionCaptor.getValue().getUrlBundle()).isEqualTo("https://store.example.com/app");
         assertThat(versionCaptor.getValue().getMinVersion()).isEqualTo(5);
         assertThat(versionCaptor.getValue().getRequiredUpdate()).isTrue();
-        verify(versionFileService, never()).resolveVersionDir(any(), any(), any(), any());
+        verify(versionFileService, never()).resolveVersionDir(any(), any(), any());
         verify(versionFileService, never()).storeVersionBundle(any(), any());
         verify(otaService, never()).publish(any(), any());
     }
 
     @Test
     void shouldThrowFieldRequiredWhenStoreUrlBundleIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         CreateVersionForm form = storeForm();
         form.setUrlBundle(" ");
 
@@ -202,7 +194,7 @@ class VersionControllerTest {
 
     @Test
     void shouldIgnoreFileWhenStoreVersionHasFile() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         stubSaveAssignsId();
         CreateVersionForm form = storeForm();
         form.setFile(bundleFile());
@@ -218,7 +210,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowBadRequestWhenStoreMinVersionIsNotLessThanVersionCode() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         CreateVersionForm form = storeForm();
         form.setMinVersion(11);
 
@@ -229,7 +221,7 @@ class VersionControllerTest {
 
     @Test
     void shouldCreateOtaVersionWithManifestIdWhenFormIsValid() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         MockMultipartFile file = otaFile();
         CreateVersionForm form = otaForm(file);
         ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
@@ -252,7 +244,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenOtaRuntimeVersionIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(otaFile());
         form.setRuntimeVersion(null);
 
@@ -263,7 +255,7 @@ class VersionControllerTest {
 
     @Test
     void shouldIgnoreUrlBundleWhenOtaVersionHasUrlBundle() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(otaFile());
         form.setUrlBundle("https://store.example.com/app");
         ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
@@ -277,7 +269,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFileInvalidWhenOtaFileIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(null);
 
         assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
@@ -287,7 +279,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFileInvalidWhenOtaFileIsEmpty() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(new MockMultipartFile("file", "ota.zip", null, new byte[0]));
 
         assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
@@ -307,21 +299,9 @@ class VersionControllerTest {
     }
 
     @Test
-    void shouldThrowCategoryNotFoundWhenCategoryDoesNotExist() {
-        CreateVersionForm form = bundleForm(bundleFile());
-        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application()));
-        when(categoryRepository.findById(2L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
-                .isInstanceOf(BadRequestException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_ERROR_NOT_FOUND);
-    }
-
-    @Test
     void shouldThrowChannelNotFoundWhenChannelDoesNotExist() {
         CreateVersionForm form = bundleForm(bundleFile());
-        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application()));
-        when(categoryRepository.findById(2L)).thenReturn(Optional.of(category()));
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application(BaseConstant.VERSION_TYPE_BUNDLE)));
         when(channelRepository.findById(3L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
@@ -331,7 +311,7 @@ class VersionControllerTest {
 
     @Test
     void shouldPropagateServiceErrorWhenBundlePublishFails() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         MockMultipartFile file = bundleFile();
         CreateVersionForm form = bundleForm(file);
         when(versionFileService.resolveBundleExtension("app.tar.gz")).thenReturn("tar.gz");
@@ -469,7 +449,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenBundleRequiredUpdateIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(bundleFile());
         form.setRequiredUpdate(null);
 
@@ -481,7 +461,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenStoreRequiredUpdateIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         CreateVersionForm form = storeForm();
         form.setRequiredUpdate(null);
 
@@ -493,7 +473,7 @@ class VersionControllerTest {
 
     @Test
     void shouldLeaveRequiredUpdateNullWhenOtaVersionCreatedWithoutIt() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(otaFile());
         form.setRequiredUpdate(null);
         ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
@@ -544,7 +524,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenBundleVersionCodeIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_BUNDLE);
         CreateVersionForm form = bundleForm(bundleFile());
         form.setVersionCode(null);
 
@@ -556,7 +536,7 @@ class VersionControllerTest {
 
     @Test
     void shouldThrowFieldRequiredWhenStoreVersionCodeIsMissing() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_STORE);
         CreateVersionForm form = storeForm();
         form.setVersionCode(null);
 
@@ -568,7 +548,7 @@ class VersionControllerTest {
 
     @Test
     void shouldLeaveVersionCodeNullWhenOtaVersionCreatedWithoutIt() {
-        stubLookups();
+        stubLookups(BaseConstant.VERSION_TYPE_OTA);
         CreateVersionForm form = otaForm(otaFile());
         form.setVersionCode(null);
         ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
@@ -649,7 +629,6 @@ class VersionControllerTest {
 
     @Test
     void shouldReturnVersionWhenIdExists() {
-        wireNestedMappers();
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
 
@@ -657,7 +636,6 @@ class VersionControllerTest {
 
         assertThat(result.getResult()).isTrue();
         assertThat(result.getData().getId()).isEqualTo(5L);
-        assertThat(result.getData().getType()).isEqualTo(BaseConstant.VERSION_TYPE_BUNDLE);
         assertThat(result.getData().getVersionCode()).isEqualTo(10);
         assertThat(result.getData().getVersionName()).isEqualTo("1.0.0");
         assertThat(result.getMessage()).isEqualTo("Get version success");
@@ -676,7 +654,7 @@ class VersionControllerTest {
     void shouldDeleteVersionDirWhenDeletingBundleVersion() {
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
-        when(versionFileService.resolveVersionDir(1L, 2L, 3L, 5L)).thenReturn(VERSION_DIR);
+        when(versionFileService.resolveVersionDir(1L, 3L, 5L)).thenReturn(VERSION_DIR);
 
         ApiMessageDto<Void> result = controller.delete(5L);
 
@@ -697,7 +675,7 @@ class VersionControllerTest {
         assertThat(result.getResult()).isTrue();
         assertThat(result.getMessage()).isEqualTo("Delete version success");
         verify(versionRepository).delete(version);
-        verify(versionFileService, never()).resolveVersionDir(any(), any(), any(), any());
+        verify(versionFileService, never()).resolveVersionDir(any(), any(), any());
         verify(versionFileService, never()).deleteVersionDir(any());
     }
 
@@ -712,7 +690,6 @@ class VersionControllerTest {
 
     @Test
     void shouldReturnPagedVersionsWhenListing() {
-        wireNestedMappers();
         Version version = existingVersion(BaseConstant.VERSION_TYPE_BUNDLE);
         Page<Version> page = new PageImpl<>(List.of(version), PageRequest.of(0, 10), 1);
         when(versionRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
@@ -764,7 +741,19 @@ class VersionControllerTest {
 
         assertThatThrownBy(() -> controller.republish(5L))
                 .isInstanceOf(BadRequestException.class)
-                .hasFieldOrPropertyWithValue("code", null);
+                .hasMessage("Only OTA version can be republished");
+        verify(otaService, never()).republish(any());
+    }
+
+    @Test
+    void shouldThrowBadRequestWhenRepublishingStoreVersion() {
+        Version source = existingVersion(BaseConstant.VERSION_TYPE_STORE);
+        source.setStatus(BaseConstant.STATUS_ACTIVE);
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> controller.republish(5L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Only OTA version can be republished");
         verify(otaService, never()).republish(any());
     }
 
@@ -798,17 +787,8 @@ class VersionControllerTest {
         }
     }
 
-    private void wireNestedMappers() {
-        ApplicationMapper applicationMapper = Mappers.getMapper(ApplicationMapper.class);
-        ReflectionTestUtils.setField(applicationMapper, "projectMapper", Mappers.getMapper(ProjectMapper.class));
-        ReflectionTestUtils.setField(versionMapper, "applicationMapper", applicationMapper);
-        ReflectionTestUtils.setField(versionMapper, "categoryMapper", Mappers.getMapper(CategoryMapper.class));
-        ReflectionTestUtils.setField(versionMapper, "channelMapper", Mappers.getMapper(ChannelMapper.class));
-    }
-
-    private void stubLookups() {
-        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application()));
-        when(categoryRepository.findById(2L)).thenReturn(Optional.of(category()));
+    private void stubLookups(Integer applicationType) {
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application(applicationType)));
         when(channelRepository.findById(3L)).thenReturn(Optional.of(channel()));
     }
 
@@ -828,17 +808,12 @@ class VersionControllerTest {
         };
     }
 
-    private Application application() {
+    private Application application(Integer type) {
         Application application = new Application();
         application.setId(1L);
         application.setName("MyApp");
+        application.setType(type);
         return application;
-    }
-
-    private Category category() {
-        Category category = new Category();
-        category.setId(2L);
-        return category;
     }
 
     private Channel channel() {
@@ -848,15 +823,13 @@ class VersionControllerTest {
         return channel;
     }
 
-    private Version existingVersion(Integer type) {
+    private Version existingVersion(Integer applicationType) {
         Version version = new Version();
         version.setId(5L);
-        version.setType(type);
         version.setVersionCode(10);
         version.setVersionName("1.0.0");
-        version.setApplication(application());
+        version.setApplication(application(applicationType));
         version.setChannel(channel());
-        version.setCategory(category());
         return version;
     }
 
@@ -868,18 +841,16 @@ class VersionControllerTest {
         return new MockMultipartFile("file", "ota.zip", null, new byte[]{1, 2, 3});
     }
 
-    private CreateVersionForm baseCreateForm(Integer type) {
+    private CreateVersionForm baseCreateForm() {
         CreateVersionForm form = new CreateVersionForm();
         form.setApplicationId(1L);
-        form.setCategoryId(2L);
         form.setChannelId(3L);
-        form.setType(type);
         form.setRequiredUpdate(true);
         return form;
     }
 
     private CreateVersionForm bundleForm(MockMultipartFile file) {
-        CreateVersionForm form = baseCreateForm(BaseConstant.VERSION_TYPE_BUNDLE);
+        CreateVersionForm form = baseCreateForm();
         form.setVersionCode(10);
         form.setVersionName("1.0.0");
         form.setMinVersion(5);
@@ -888,7 +859,7 @@ class VersionControllerTest {
     }
 
     private CreateVersionForm storeForm() {
-        CreateVersionForm form = baseCreateForm(BaseConstant.VERSION_TYPE_STORE);
+        CreateVersionForm form = baseCreateForm();
         form.setVersionCode(10);
         form.setVersionName("1.0.0");
         form.setMinVersion(5);
@@ -897,7 +868,7 @@ class VersionControllerTest {
     }
 
     private CreateVersionForm otaForm(MockMultipartFile file) {
-        CreateVersionForm form = baseCreateForm(BaseConstant.VERSION_TYPE_OTA);
+        CreateVersionForm form = baseCreateForm();
         form.setVersionCode(10);
         form.setVersionName("1.0.0");
         form.setMinVersion(3);

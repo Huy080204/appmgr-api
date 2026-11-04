@@ -22,6 +22,7 @@ public interface ApplicationMapper {
 
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
+    @Mapping(source = "type", target = "type")
     @BeanMapping(ignoreByDefault = true)
     @Named("adminCreateMapping")
     Application fromFormToEntity(CreateApplicationForm createApplicationForm);
@@ -35,6 +36,7 @@ public interface ApplicationMapper {
     @Mapping(source = "id", target = "id")
     @Mapping(source = "name", target = "name")
     @Mapping(source = "description", target = "description")
+    @Mapping(source = "type", target = "type")
     @Mapping(source = "project", target = "project", qualifiedByName = "fromEntityToProjectDto")
     @Mapping(source = "modifiedDate", target = "modifiedDate")
     @Mapping(source = "createdDate", target = "createdDate")
