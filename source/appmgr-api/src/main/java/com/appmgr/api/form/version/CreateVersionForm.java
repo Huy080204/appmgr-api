@@ -42,8 +42,7 @@ public class CreateVersionForm {
     @Schema(name = "versionName", requiredMode = Schema.RequiredMode.REQUIRED)
     private String versionName;
 
-    @NotNull(message = "requiredUpdate cannot be null")
-    @Schema(name = "requiredUpdate", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(name = "requiredUpdate")
     private Boolean requiredUpdate;
 
     @Schema(name = "minVersion")
