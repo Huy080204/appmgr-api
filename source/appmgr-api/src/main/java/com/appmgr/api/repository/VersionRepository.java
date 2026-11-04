@@ -26,6 +26,8 @@ public interface VersionRepository extends JpaRepository<Version, Long>, JpaSpec
 
     boolean existsByCategoryId(Long categoryId);
 
+    Optional<Version> findByIdAndTypeAndStatus(Long id, Integer type, Integer status);
+
     Optional<Version> findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(Long id, Long applicationId, Long channelId, Integer type, Integer status);
 
     Optional<Version> findFirstByApplicationIdAndCategoryIdAndChannelIdAndTypeInAndStatusOrderByTimestampDesc(Long applicationId, Long categoryId, Long channelId, Collection<Integer> types, Integer status);

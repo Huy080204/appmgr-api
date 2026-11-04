@@ -49,7 +49,8 @@ public class OtaService {
         validateOtaZip(file);
         versionRepository.save(version);
         Path versionDir = versionFileService.resolveVersionDir(
-                version.getApplication().getId(), version.getChannel().getId(), version.getId());
+                version.getApplication().getId(), version.getCategory().getId(),
+                version.getChannel().getId(), version.getId());
         try {
             extractOtaZip(file, versionDir);
             version.setManifestId(computeManifestId(versionDir.resolve(BaseConstant.OTA_METADATA_FILE)));
@@ -64,8 +65,9 @@ public class OtaService {
     @Transactional
     public Version republish(Version source) {
         Long appId = source.getApplication().getId();
+        Long categoryId = source.getCategory().getId();
         Long channelId = source.getChannel().getId();
-        Path sourceDir = versionFileService.resolveVersionDir(appId, channelId, source.getId());
+        Path sourceDir = versionFileService.resolveVersionDir(appId, categoryId, channelId, source.getId());
         if (!Files.isRegularFile(sourceDir.resolve(BaseConstant.OTA_METADATA_FILE))) {
             throw new BadRequestException("Source OTA metadata not found", ErrorCode.VERSION_ERROR_METADATA_NOT_FOUND);
         }
@@ -74,7 +76,7 @@ public class OtaService {
         version.setTimestamp(Instant.now().toEpochMilli());
         versionRepository.save(version);
 
-        Path targetDir = versionFileService.resolveVersionDir(appId, channelId, version.getId());
+        Path targetDir = versionFileService.resolveVersionDir(appId, categoryId, channelId, version.getId());
         boolean success = false;
         try {
             FileSystemUtils.copyRecursively(sourceDir, targetDir);

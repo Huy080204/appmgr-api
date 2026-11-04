@@ -129,15 +129,15 @@ class BundleControllerTest {
 
     @Test
     void shouldThrowNotFoundWhenNoActiveBundleVersionMatchesOnDownload() {
-        when(versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
-                10L, 1L, 3L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findByIdAndTypeAndStatus(
+                10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> controller.downloadVersion(1L, 3L, 10L))
+        assertThatThrownBy(() -> controller.downloadVersion(10L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
-        verify(versionRepository).findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
-                10L, 1L, 3L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE);
+        verify(versionRepository).findByIdAndTypeAndStatus(
+                10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE);
     }
 
     @Test
@@ -147,7 +147,7 @@ class BundleControllerTest {
         when(versionFileService.resolveBundleFile(version)).thenReturn(
                 new BundleFile(file, "app_1.0_10.apk", BaseConstant.BUNDLE_MEDIA_TYPE_APK));
 
-        ResponseEntity<Resource> result = controller.downloadVersion(1L, 3L, 10L);
+        ResponseEntity<Resource> result = controller.downloadVersion(10L);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(Files.readAllBytes(result.getBody().getFile().toPath())).isEqualTo(Files.readAllBytes(file));
@@ -166,7 +166,7 @@ class BundleControllerTest {
         when(versionFileService.resolveBundleFile(version)).thenReturn(
                 new BundleFile(file, "app_1.0_10.tar.gz", BaseConstant.BUNDLE_MEDIA_TYPE_TAR_GZ));
 
-        ResponseEntity<Resource> result = controller.downloadVersion(1L, 3L, 10L);
+        ResponseEntity<Resource> result = controller.downloadVersion(10L);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(Files.readAllBytes(result.getBody().getFile().toPath())).isEqualTo(Files.readAllBytes(file));
@@ -185,7 +185,7 @@ class BundleControllerTest {
         when(versionFileService.resolveBundleFile(version)).thenReturn(
                 new BundleFile(file, fileName, BaseConstant.BUNDLE_MEDIA_TYPE_APK));
 
-        ResponseEntity<Resource> result = controller.downloadVersion(1L, 3L, 10L);
+        ResponseEntity<Resource> result = controller.downloadVersion(10L);
 
         assertThat(result.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
                 .startsWith("attachment; filename*=UTF-8''")
@@ -199,7 +199,7 @@ class BundleControllerTest {
         when(versionFileService.resolveBundleFile(version)).thenReturn(new BundleFile(
                 file, "evil\r\nSet-Cookie: x=1_10.apk", BaseConstant.BUNDLE_MEDIA_TYPE_APK));
 
-        ResponseEntity<Resource> result = controller.downloadVersion(1L, 3L, 10L);
+        ResponseEntity<Resource> result = controller.downloadVersion(10L);
 
         String header = result.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
         assertThat(header).doesNotContain("\r").doesNotContain("\n");
@@ -212,7 +212,7 @@ class BundleControllerTest {
         when(versionFileService.resolveBundleFile(version))
                 .thenThrow(new NotFoundException("Bundle file not found", ErrorCode.VERSION_ERROR_NOT_FOUND));
 
-        assertThatThrownBy(() -> controller.downloadVersion(1L, 3L, 10L))
+        assertThatThrownBy(() -> controller.downloadVersion(10L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -227,8 +227,8 @@ class BundleControllerTest {
         Version version = new Version();
         version.setId(10L);
         version.setType(BaseConstant.VERSION_TYPE_BUNDLE);
-        when(versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
-                10L, 1L, 3L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findByIdAndTypeAndStatus(
+                10L, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(version));
         return version;
     }

@@ -74,10 +74,9 @@ public class BundleController extends ABasicController {
     }
 
     @GetMapping(value = "/download-version")
-    public ResponseEntity<Resource> downloadVersion(@RequestParam Long appId, @RequestParam Long channelId, @RequestParam Long versionId) {
+    public ResponseEntity<Resource> downloadVersion(@RequestParam Long versionId) {
         Version version = versionRepository
-                .findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(versionId, appId, channelId,
-                        BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE)
+                .findByIdAndTypeAndStatus(versionId, BaseConstant.VERSION_TYPE_BUNDLE, BaseConstant.STATUS_ACTIVE)
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
 
         BundleFile file = versionFileService.resolveBundleFile(version);

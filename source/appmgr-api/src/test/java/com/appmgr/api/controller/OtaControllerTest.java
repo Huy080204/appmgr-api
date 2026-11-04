@@ -330,11 +330,11 @@ class OtaControllerTest {
     @Test
     void shouldReturnAssetWithMediaTypeAndNoContentDispositionWhenAssetResolved() {
         Resource resource = new ByteArrayResource(new byte[]{1, 2, 3});
-        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("555","assets/def"))
                 .thenReturn(new OtaAsset(resource, "image/png"));
 
-        ResponseEntity<Resource> response = controller.assets("10", "5", "555",
-                assetRequest("/v1/ota/assets/10/5/555/assets/def"));
+        ResponseEntity<Resource> response = controller.assets("555",
+                assetRequest("/v1/ota/assets/555/assets/def"));
 
         assertThat(response.getStatusCodeValue()).isEqualTo(200);
         assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.IMAGE_PNG);
@@ -344,11 +344,11 @@ class OtaControllerTest {
 
     @Test
     void shouldPropagateNotFoundWhenAssetCannotBeResolved() {
-        when(otaSigningService.resolveAsset("10", "5", "555", "missing"))
+        when(otaSigningService.resolveAsset("555","missing"))
                 .thenThrow(new NotFoundException("Not found asset!", ErrorCode.VERSION_ERROR_NOT_FOUND));
-        MockHttpServletRequest request = assetRequest("/v1/ota/assets/10/5/555/missing");
+        MockHttpServletRequest request = assetRequest("/v1/ota/assets/555/missing");
 
-        assertThatThrownBy(() -> controller.assets("10", "5", "555", request))
+        assertThatThrownBy(() -> controller.assets("555",request))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -382,11 +382,11 @@ class OtaControllerTest {
     @Test
     void shouldServeAssetBytesThroughMvcWhenNestedFilePathRequested() throws Exception {
         byte[] bytes = new byte[]{1, 2, 3, 4};
-        when(otaSigningService.resolveAsset("10", "5", "555", "_expo/static/js/android/index-abc.hbc"))
+        when(otaSigningService.resolveAsset("555","_expo/static/js/android/index-abc.hbc"))
                 .thenReturn(new OtaAsset(new ByteArrayResource(bytes), "application/javascript"));
 
         MvcResult result = buildMockMvc()
-                .perform(get("/v1/ota/assets/10/5/555/_expo/static/js/android/index-abc.hbc"))
+                .perform(get("/v1/ota/assets/555/_expo/static/js/android/index-abc.hbc"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -397,10 +397,10 @@ class OtaControllerTest {
     @Test
     void shouldPassSingleSegmentFilePathToServiceThroughMvcWhenFileIsDirectlyUnderVersion() throws Exception {
         byte[] bytes = new byte[]{9, 8};
-        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("555","assets/def"))
                 .thenReturn(new OtaAsset(new ByteArrayResource(bytes), "image/png"));
 
-        MvcResult result = buildMockMvc().perform(get("/v1/ota/assets/10/5/555/assets/def"))
+        MvcResult result = buildMockMvc().perform(get("/v1/ota/assets/555/assets/def"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -410,11 +410,11 @@ class OtaControllerTest {
 
     @Test
     void shouldSurfaceNotFoundThroughMvcWhenServiceCannotResolveAsset() {
-        when(otaSigningService.resolveAsset("10", "5", "555", "assets/def"))
+        when(otaSigningService.resolveAsset("555","assets/def"))
                 .thenThrow(new NotFoundException("Asset not found", ErrorCode.VERSION_ERROR_NOT_FOUND));
         MockMvc mockMvc = buildMockMvc();
 
-        assertThatThrownBy(() -> mockMvc.perform(get("/v1/ota/assets/10/5/555/assets/def")))
+        assertThatThrownBy(() -> mockMvc.perform(get("/v1/ota/assets/555/assets/def")))
                 .isInstanceOf(ServletException.class)
                 .satisfies(ex -> assertThat(ex.getCause())
                         .isInstanceOf(NotFoundException.class)
@@ -424,7 +424,7 @@ class OtaControllerTest {
     private MockHttpServletRequest assetRequest(String requestPath) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", requestPath);
         request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
-                "/v1/ota/assets/{appId}/{channelId}/{versionId}/**");
+                "/v1/ota/assets/{versionId}/**");
         request.setAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, requestPath);
         return request;
     }

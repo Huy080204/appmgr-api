@@ -167,7 +167,8 @@ public class VersionController extends ABasicController {
                 .orElseThrow(() -> new NotFoundException("Not found version!", ErrorCode.VERSION_ERROR_NOT_FOUND));
         if (!BaseConstant.VERSION_TYPE_STORE.equals(version.getType())) {
             versionFileService.deleteVersionDir(versionFileService.resolveVersionDir(
-                    version.getApplication().getId(), version.getChannel().getId(), version.getId()));
+                    version.getApplication().getId(), version.getCategory().getId(),
+                    version.getChannel().getId(), version.getId()));
         }
         versionRepository.delete(version);
         return makeSuccessResponse("Delete version success");
@@ -175,8 +176,6 @@ public class VersionController extends ABasicController {
 
     private String buildBundleUrl(Version version) {
         return UriComponentsBuilder.fromPath(BaseConstant.VERSION_DOWNLOAD_PATH)
-                .queryParam("appId", version.getApplication().getId())
-                .queryParam("channelId", version.getChannel().getId())
                 .queryParam("versionId", version.getId())
                 .toUriString();
     }

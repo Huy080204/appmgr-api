@@ -11,7 +11,6 @@ import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.Version;
-import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -54,8 +53,6 @@ import java.util.Map;
 public class OtaSigningService {
 
     @Autowired
-    private ChannelRepository channelRepository;
-    @Autowired
     private VersionRepository versionRepository;
     @Autowired
     private ProjectRepository projectRepository;
@@ -71,13 +68,13 @@ public class OtaSigningService {
 
     public OtaPart buildManifest(Version version, Long appId, Channel channel, String platform) {
         Long channelId = channel.getId();
-        Path versionDir = versionFileService.resolveVersionDir(appId, channelId, version.getId());
+        Path versionDir = versionFileService.resolveVersionDir(appId, version.getCategory().getId(), channelId,
+                version.getId());
         JsonNode platformNode = readFileMetadata(versionDir).path(platform);
         if (!platformNode.isObject()) {
             throw new NotFoundException("Platform not found", ErrorCode.VERSION_ERROR_NOT_FOUND);
         }
-        String assetBaseUrl = serverUri + BaseConstant.OTA_ASSETS_PATH + "/" + appId + "/"
-                + channelId + "/" + version.getId() + "/";
+        String assetBaseUrl = serverUri + BaseConstant.OTA_ASSETS_PATH + "/" + version.getId() + "/";
         List<Map<String, Object>> assets = new ArrayList<>();
         for (JsonNode asset : platformNode.path("assets")) {
             String extension = toExtension(asset);
@@ -103,16 +100,15 @@ public class OtaSigningService {
         return sign(BaseConstant.OTA_PART_DIRECTIVE, toJson(directive), appId, channel);
     }
 
-    public OtaAsset resolveAsset(String appId, String channelId, String versionId, String filePath) {
-        Long applicationId = parseId(appId);
-        Long parsedChannelId = parseId(channelId);
+    public OtaAsset resolveAsset(String versionId, String filePath) {
         Long id = parseId(versionId);
         validateFilePath(filePath);
-        Channel channel = channelRepository.findById(parsedChannelId).orElseThrow(this::assetNotFound);
-        versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(id, applicationId, channel.getId(),
-                BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE).orElseThrow(this::assetNotFound);
+        Version version = versionRepository
+                .findByIdAndTypeAndStatus(id, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE)
+                .orElseThrow(this::assetNotFound);
 
-        Path versionDir = versionFileService.resolveVersionDir(applicationId, channel.getId(), id);
+        Path versionDir = versionFileService.resolveVersionDir(version.getApplication().getId(),
+                version.getCategory().getId(), version.getChannel().getId(), id);
         Path target = resolveDeclaredFile(versionDir, filePath);
         String mediaType = findDeclaredMediaType(readFileMetadata(versionDir), filePath);
         if (mediaType == null || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)

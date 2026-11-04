@@ -8,10 +8,11 @@ import com.appmgr.api.dto.project.ProjectKeyDto;
 import com.appmgr.api.dto.project.ProjectSettingsDto;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
+import com.appmgr.api.model.Application;
+import com.appmgr.api.model.Category;
 import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.Version;
-import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -60,11 +61,10 @@ class OtaSigningServiceTest {
     private static final String SETTINGS_JSON = "{\"keys\":{}}";
     private static final KeyPair KEY_PAIR = generateKeyPair();
     private static final Long APP_ID = 100L;
+    private static final Long CATEGORY_ID = 5L;
     private static final Long CHANNEL_ID = 7L;
     private static final Long VERSION_ID = 300L;
     private static final String CHANNEL_NAME = "production";
-    private static final String CHANNEL_ID_TEXT = String.valueOf(CHANNEL_ID);
-    private static final String APP = String.valueOf(APP_ID);
     private static final String VERSION = String.valueOf(VERSION_ID);
     private static final Long TIMESTAMP = 1700000000000L;
     private static final String RUNTIME_VERSION = "1.0.0";
@@ -81,8 +81,6 @@ class OtaSigningServiceTest {
 
     private static final Pattern SIGNATURE_HEADER = Pattern.compile("^sig=\"([^\"]+)\", keyid=\"main\", alg=\"rsa-v1_5-sha256\"$");
 
-    @Mock
-    private ChannelRepository channelRepository;
     @Mock
     private VersionRepository versionRepository;
     @Mock
@@ -199,7 +197,7 @@ class OtaSigningServiceTest {
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(root.get("launchAsset").get("url").asText())
-                .isEqualTo("http://localhost:8787/v1/ota/assets/100/7/300/_expo/static/js/android/index-abc.hbc");
+                .isEqualTo("http://localhost:8787/v1/ota/assets/300/_expo/static/js/android/index-abc.hbc");
         assertThat(part.getJson()).doesNotContain("?asset=");
         assertThat(part.getJson()).doesNotContain("APP_VERSION");
         assertThat(part.getJson()).doesNotContain("%2F");
@@ -601,7 +599,7 @@ class OtaSigningServiceTest {
         stubLookup();
         stubVersionDir();
 
-        OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_BUNDLE);
+        OtaAsset result = service.resolveAsset(VERSION,ANDROID_BUNDLE);
 
         assertThat(result.getMediaType()).isEqualTo("application/javascript");
         assertThat(result.getResource().getInputStream().readAllBytes()).isEqualTo(ANDROID_BUNDLE_BYTES);
@@ -613,7 +611,7 @@ class OtaSigningServiceTest {
         stubLookup();
         stubVersionDir();
 
-        OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
+        OtaAsset result = service.resolveAsset(VERSION,ANDROID_ASSET);
 
         assertThat(result.getMediaType()).isEqualTo("image/png");
         assertThat(result.getResource().getInputStream().readAllBytes()).isEqualTo(ANDROID_ASSET_BYTES);
@@ -628,7 +626,7 @@ class OtaSigningServiceTest {
         stubLookup();
         stubVersionDir();
 
-        OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, "assets/abc");
+        OtaAsset result = service.resolveAsset(VERSION,"assets/abc");
 
         assertThat(result.getMediaType()).isEqualTo("image/png");
         assertThat(result.getResource().exists()).isTrue();
@@ -643,7 +641,7 @@ class OtaSigningServiceTest {
         stubLookup();
         stubVersionDir();
 
-        OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_BUNDLE);
+        OtaAsset result = service.resolveAsset(VERSION,ANDROID_BUNDLE);
 
         assertThat(result.getMediaType()).isEqualTo("application/javascript");
         assertThat(result.getResource().exists()).isTrue();
@@ -680,42 +678,21 @@ class OtaSigningServiceTest {
     }
 
     @Test
-    void shouldThrowNotFoundWhenAppIdIsNotNumeric() {
-
-        assertResolveNotFound("abc", CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
-    }
-
-    @Test
     void shouldThrowNotFoundWhenVersionIdIsNotNumeric() {
 
-        assertResolveNotFound(APP, CHANNEL_ID_TEXT, "abc", ANDROID_ASSET);
-    }
-
-    @Test
-    void shouldThrowNotFoundWhenAppIdIsNull() {
-
-        assertResolveNotFound(null, CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
+        assertResolveNotFound("abc", ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenVersionIdIsNull() {
 
-        assertResolveNotFound(APP, CHANNEL_ID_TEXT, null, ANDROID_ASSET);
-    }
-
-    @Test
-    void shouldThrowNotFoundWhenChannelIdIsUnknown() {
-        when(channelRepository.findById(CHANNEL_ID)).thenReturn(Optional.empty());
-
-        assertResolveNotFound(ANDROID_ASSET);
+        assertResolveNotFound(null, ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenVersionIsAbsentOrNotActiveOtaVersion() {
-        Channel channel = buildChannel();
-        when(channelRepository.findById(CHANNEL_ID)).thenReturn(Optional.of(channel));
-        when(versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
-                VERSION_ID, APP_ID, CHANNEL_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findByIdAndTypeAndStatus(
+                VERSION_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
         assertResolveNotFound(ANDROID_ASSET);
@@ -828,19 +805,14 @@ class OtaSigningServiceTest {
         assertResolveNotFound(ANDROID_BUNDLE);
     }
 
-    @Test
-    void shouldThrowNotFoundWhenChannelIdIsNotNumeric() {
-        assertResolveNotFound(APP, CHANNEL_NAME, VERSION, ANDROID_ASSET);
-    }
-
     // ---------------------------------------------------------------- helpers
 
     private void assertResolveNotFound(String filePath) {
-        assertResolveNotFound(APP, CHANNEL_ID_TEXT, VERSION, filePath);
+        assertResolveNotFound(VERSION, filePath);
     }
 
-    private void assertResolveNotFound(String appId, String channelName, String versionId, String filePath) {
-        assertThatThrownBy(() -> service.resolveAsset(appId, channelName, versionId, filePath))
+    private void assertResolveNotFound(String versionId, String filePath) {
+        assertThatThrownBy(() -> service.resolveAsset(versionId, filePath))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND)
                 .hasMessage("Asset not found")
@@ -891,7 +863,14 @@ class OtaSigningServiceTest {
     }
 
     private Version buildVersion() {
+        Application application = new Application();
+        application.setId(APP_ID);
+        Category category = new Category();
+        category.setId(CATEGORY_ID);
         Version version = new Version();
+        version.setApplication(application);
+        version.setCategory(category);
+        version.setChannel(buildChannel());
         version.setId(VERSION_ID);
         version.setType(BaseConstant.VERSION_TYPE_OTA);
         version.setStatus(BaseConstant.STATUS_ACTIVE);
@@ -902,14 +881,13 @@ class OtaSigningServiceTest {
     }
 
     private void stubLookup() {
-        when(channelRepository.findById(CHANNEL_ID)).thenReturn(Optional.of(buildChannel()));
-        when(versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
-                VERSION_ID, APP_ID, CHANNEL_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
+        when(versionRepository.findByIdAndTypeAndStatus(
+                VERSION_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.of(buildVersion()));
     }
 
     private void stubVersionDir() {
-        when(versionFileService.resolveVersionDir(APP_ID, CHANNEL_ID, VERSION_ID)).thenReturn(versionDir);
+        when(versionFileService.resolveVersionDir(APP_ID, CATEGORY_ID, CHANNEL_ID, VERSION_ID)).thenReturn(versionDir);
     }
 
     private void writeStandardFixture() throws IOException {
@@ -990,7 +968,7 @@ class OtaSigningServiceTest {
     }
 
     private String assetUrl(String relativePath) {
-        return SERVER_URI + "/v1/ota/assets/" + APP + "/" + CHANNEL_ID + "/" + VERSION + "/" + relativePath;
+        return SERVER_URI + "/v1/ota/assets/" + VERSION + "/" + relativePath;
     }
 
     private String sha256Base64Url(byte[] bytes) throws Exception {
