@@ -34,8 +34,7 @@ public class CreateVersionForm {
     @Schema(name = "type", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer type;
 
-    @NotNull(message = "versionCode cannot be null")
-    @Schema(name = "versionCode", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(name = "versionCode")
     private Integer versionCode;
 
     @NotBlank(message = "versionName cannot be null")

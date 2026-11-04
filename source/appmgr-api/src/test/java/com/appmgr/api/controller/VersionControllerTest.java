@@ -244,7 +244,7 @@ class VersionControllerTest {
         verify(versionRepository, never()).save(any(Version.class));
         verify(versionFileService, never()).storeVersionBundle(any(), any());
         Version published = versionCaptor.getValue();
-        assertThat(published.getMinVersion()).isNull();
+        assertThat(published.getMinVersion()).isEqualTo(3);
         assertThat(published.getRuntimeVersion()).isEqualTo("1.0");
         assertThat(published.getChannel().getId()).isEqualTo(3L);
         assertThat(published.getTimestamp()).isNotNull();
@@ -362,11 +362,8 @@ class VersionControllerTest {
         assertThat(result.getMessage()).isEqualTo("Update version success");
         verify(versionRepository).save(version);
         assertThat(version.getUrlBundle()).isEqualTo("/old/url");
-        assertThat(version.getMinVersion()).isEqualTo(2);
+        assertThat(version.getMinVersion()).isEqualTo(9);
         assertThat(version.getRuntimeVersion()).isEqualTo("2.0");
-        assertThat(version.getVersionCode()).isEqualTo(20);
-        assertThat(version.getVersionName()).isEqualTo("2.0.0");
-        assertThat(version.getRequiredUpdate()).isNull();
         assertThat(version.getVersionCode()).isEqualTo(20);
         assertThat(version.getVersionName()).isEqualTo("2.0.0");
     }
@@ -388,7 +385,6 @@ class VersionControllerTest {
         UpdateVersionForm form = updateForm();
         form.setMinVersion(9);
         form.setUrlBundle("https://store.example.com/new");
-        form.setRuntimeVersion("9.9");
 
         ApiMessageDto<Void> result = controller.update(form, new BeanPropertyBindingResult(form, "form"));
 
@@ -510,20 +506,6 @@ class VersionControllerTest {
     }
 
     @Test
-    void shouldIgnoreRequiredUpdateWhenOtaVersionCreatedWithIt() {
-        stubLookups();
-        CreateVersionForm form = otaForm(otaFile());
-        form.setRequiredUpdate(true);
-        ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
-        when(otaService.publish(versionCaptor.capture(), any())).thenAnswer(publishAssignsId());
-
-        ApiMessageDto<VersionDto> result = controller.create(form, new BeanPropertyBindingResult(form, "form"));
-
-        assertThat(result.getResult()).isTrue();
-        assertThat(versionCaptor.getValue().getRequiredUpdate()).isNull();
-    }
-
-    @Test
     void shouldThrowFieldRequiredWhenUpdatingBundleVersionWithoutRequiredUpdate() {
         when(versionRepository.findById(5L)).thenReturn(Optional.of(existingVersion(BaseConstant.VERSION_TYPE_BUNDLE)));
         UpdateVersionForm form = updateForm();
@@ -551,29 +533,78 @@ class VersionControllerTest {
     }
 
     @Test
-    void shouldIgnoreRequiredUpdateWhenUpdatingOtaVersion() {
-        Version version = existingVersion(BaseConstant.VERSION_TYPE_OTA);
-        version.setRequiredUpdate(true);
-        when(versionRepository.findById(5L)).thenReturn(Optional.of(version));
-        UpdateVersionForm form = updateForm();
-        form.setRuntimeVersion("2.0");
-        form.setRequiredUpdate(false);
-
-        ApiMessageDto<Void> result = controller.update(form, new BeanPropertyBindingResult(form, "form"));
-
-        assertThat(result.getResult()).isTrue();
-        assertThat(version.getRequiredUpdate()).isTrue();
-        verify(versionRepository).save(version);
-    }
-
-    @Test
-    void shouldRejectOtaCreateFormWhenVersionCodeIsMissing() {
+    void shouldAcceptCreateFormWhenVersionCodeIsMissing() {
         CreateVersionForm form = otaForm(otaFile());
         form.setVersionCode(null);
 
         Set<ConstraintViolation<CreateVersionForm>> violations = validate(form);
 
-        assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("versionCode");
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    void shouldThrowFieldRequiredWhenBundleVersionCodeIsMissing() {
+        stubLookups();
+        CreateVersionForm form = bundleForm(bundleFile());
+        form.setVersionCode(null);
+
+        assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("versionCode is required");
+        verify(versionRepository, never()).save(any(Version.class));
+    }
+
+    @Test
+    void shouldThrowFieldRequiredWhenStoreVersionCodeIsMissing() {
+        stubLookups();
+        CreateVersionForm form = storeForm();
+        form.setVersionCode(null);
+
+        assertThatThrownBy(() -> controller.create(form, new BeanPropertyBindingResult(form, "form")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("versionCode is required");
+        verify(versionRepository, never()).save(any(Version.class));
+    }
+
+    @Test
+    void shouldLeaveVersionCodeNullWhenOtaVersionCreatedWithoutIt() {
+        stubLookups();
+        CreateVersionForm form = otaForm(otaFile());
+        form.setVersionCode(null);
+        ArgumentCaptor<Version> versionCaptor = ArgumentCaptor.forClass(Version.class);
+        when(otaService.publish(versionCaptor.capture(), any())).thenAnswer(publishAssignsId());
+
+        ApiMessageDto<VersionDto> result = controller.create(form, new BeanPropertyBindingResult(form, "form"));
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(versionCaptor.getValue().getVersionCode()).isNull();
+    }
+
+    @Test
+    void shouldThrowFieldRequiredWhenUpdatingBundleVersionWithoutVersionCode() {
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(existingVersion(BaseConstant.VERSION_TYPE_BUNDLE)));
+        UpdateVersionForm form = updateForm();
+        form.setMinVersion(9);
+        form.setVersionCode(null);
+
+        assertThatThrownBy(() -> controller.update(form, new BeanPropertyBindingResult(form, "form")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("versionCode is required");
+        verify(versionRepository, never()).save(any(Version.class));
+    }
+
+    @Test
+    void shouldThrowFieldRequiredWhenUpdatingStoreVersionWithoutVersionCode() {
+        when(versionRepository.findById(5L)).thenReturn(Optional.of(existingVersion(BaseConstant.VERSION_TYPE_STORE)));
+        UpdateVersionForm form = updateForm();
+        form.setMinVersion(9);
+        form.setUrlBundle("https://store.example.com/new");
+        form.setVersionCode(null);
+
+        assertThatThrownBy(() -> controller.update(form, new BeanPropertyBindingResult(form, "form")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("versionCode is required");
+        verify(versionRepository, never()).save(any(Version.class));
     }
 
     @Test
@@ -597,15 +628,23 @@ class VersionControllerTest {
     }
 
     @Test
-    void shouldRejectUpdateFormWhenVersionCodeAndVersionNameAreMissing() {
+    void shouldRejectUpdateFormWhenVersionNameIsMissing() {
         UpdateVersionForm form = updateForm();
-        form.setVersionCode(null);
         form.setVersionName(null);
 
         Set<ConstraintViolation<UpdateVersionForm>> violations = validate(form);
 
-        assertThat(violations).extracting(v -> v.getPropertyPath().toString())
-                .containsExactlyInAnyOrder("versionCode", "versionName");
+        assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("versionName");
+    }
+
+    @Test
+    void shouldAcceptUpdateFormWhenVersionCodeIsMissing() {
+        UpdateVersionForm form = updateForm();
+        form.setVersionCode(null);
+
+        Set<ConstraintViolation<UpdateVersionForm>> violations = validate(form);
+
+        assertThat(violations).isEmpty();
     }
 
     @Test
