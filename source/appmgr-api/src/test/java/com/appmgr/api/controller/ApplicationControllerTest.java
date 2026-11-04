@@ -2,7 +2,9 @@ package com.appmgr.api.controller;
 
 import com.appmgr.api.dto.ApiMessageDto;
 import com.appmgr.api.dto.ErrorCode;
+import com.appmgr.api.dto.application.ApplicationConfigDto;
 import com.appmgr.api.dto.application.ApplicationDto;
+import com.appmgr.api.dto.project.ProjectKeyDto;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.application.CreateApplicationForm;
@@ -10,10 +12,15 @@ import com.appmgr.api.form.application.UpdateApplicationForm;
 import com.appmgr.api.mapper.ApplicationMapper;
 import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.model.Application;
+import com.appmgr.api.model.Category;
+import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.repository.ApplicationRepository;
+import com.appmgr.api.repository.CategoryRepository;
+import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
+import com.appmgr.api.service.ProjectSettingsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -52,6 +59,15 @@ class ApplicationControllerTest {
 
     @Mock
     private VersionRepository versionRepository;
+
+    @Mock
+    private CategoryRepository categoryRepository;
+
+    @Mock
+    private ChannelRepository channelRepository;
+
+    @Mock
+    private ProjectSettingsService projectSettingsService;
 
     @Spy
     private ApplicationMapper applicationMapper = Mappers.getMapper(ApplicationMapper.class);
@@ -265,5 +281,91 @@ class ApplicationControllerTest {
         assertThatThrownBy(() -> controller.delete(1L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.APPLICATION_ERROR_NOT_FOUND);
+    }
+
+    private Channel channel(Long id, String jsonKey) {
+        Channel channel = new Channel();
+        channel.setId(id);
+        channel.setJsonKey(jsonKey);
+        return channel;
+    }
+
+    private Category category(Long id) {
+        Category category = new Category();
+        category.setId(id);
+        return category;
+    }
+
+    @Test
+    void shouldReturnConfigWhenAllIdsExist() {
+        Project project = project(1L);
+        ProjectKeyDto key = new ProjectKeyDto();
+        key.setKeyId("key-1");
+        key.setPublicKey("pub-1");
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project)));
+        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
+        when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, "key-1")));
+        when(projectSettingsService.findKey(project, "key-1")).thenReturn(key);
+
+        ApiMessageDto<ApplicationConfigDto> result = controller.getConfig(5L, 6L, 7L);
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getData().getAppId()).isEqualTo(5L);
+        assertThat(result.getData().getCategoryId()).isEqualTo(6L);
+        assertThat(result.getData().getChannelId()).isEqualTo(7L);
+        assertThat(result.getData().getKeyId()).isEqualTo("key-1");
+        assertThat(result.getData().getPublicKey()).isEqualTo("pub-1");
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenConfigApplicationDoesNotExist() {
+        when(applicationRepository.findById(5L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.APPLICATION_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenConfigCategoryDoesNotExist() {
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
+        when(categoryRepository.findById(6L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenConfigChannelDoesNotExist() {
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
+        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
+        when(channelRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsBlank() {
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
+        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
+        when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, "  ")));
+
+        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsNull() {
+        when(applicationRepository.findById(5L)).thenReturn(Optional.of(application(5L, "App", project(1L))));
+        when(categoryRepository.findById(6L)).thenReturn(Optional.of(category(6L)));
+        when(channelRepository.findById(7L)).thenReturn(Optional.of(channel(7L, null)));
+
+        assertThatThrownBy(() -> controller.getConfig(5L, 6L, 7L))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
     }
 }

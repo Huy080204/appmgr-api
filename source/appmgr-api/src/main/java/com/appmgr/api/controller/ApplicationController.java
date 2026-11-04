@@ -3,18 +3,24 @@ package com.appmgr.api.controller;
 import com.appmgr.api.dto.ApiMessageDto;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.ResponseListDto;
+import com.appmgr.api.dto.application.ApplicationConfigDto;
 import com.appmgr.api.dto.application.ApplicationDto;
+import com.appmgr.api.dto.project.ProjectKeyDto;
 import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.application.CreateApplicationForm;
 import com.appmgr.api.form.application.UpdateApplicationForm;
 import com.appmgr.api.mapper.ApplicationMapper;
 import com.appmgr.api.model.Application;
+import com.appmgr.api.model.Channel;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.criteria.ApplicationCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
+import com.appmgr.api.repository.CategoryRepository;
+import com.appmgr.api.repository.ChannelRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
+import com.appmgr.api.service.ProjectSettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -32,6 +38,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -54,12 +61,45 @@ public class ApplicationController extends ABasicController {
     @Autowired
     private VersionRepository versionRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ChannelRepository channelRepository;
+
+    @Autowired
+    private ProjectSettingsService projectSettingsService;
+
     @GetMapping(value = "/get/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('APP_V')")
     public ApiMessageDto<ApplicationDto> get(@PathVariable Long id) {
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
         return makeSuccessResponse(applicationMapper.fromEntityToApplicationDto(application), "Get application success");
+    }
+
+    @GetMapping(value = "/get-config", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('APP_V')")
+    @Transactional(readOnly = true)
+    public ApiMessageDto<ApplicationConfigDto> getConfig(@RequestParam Long applicationId, @RequestParam Long categoryId, @RequestParam Long channelId) {
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new NotFoundException("Not found application!", ErrorCode.APPLICATION_ERROR_NOT_FOUND));
+        categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Not found category!", ErrorCode.CATEGORY_ERROR_NOT_FOUND));
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new NotFoundException("Not found channel!", ErrorCode.CHANNEL_ERROR_NOT_FOUND));
+        if (channel.getJsonKey() == null || channel.getJsonKey().isBlank()) {
+            throw new BadRequestException("Signing key not found", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
+        }
+        ProjectKeyDto key = projectSettingsService.findKey(application.getProject(), channel.getJsonKey());
+
+        ApplicationConfigDto config = new ApplicationConfigDto();
+        config.setAppId(applicationId);
+        config.setCategoryId(categoryId);
+        config.setChannelId(channelId);
+        config.setKeyId(key.getKeyId());
+        config.setPublicKey(key.getPublicKey());
+        return makeSuccessResponse(config, "Get application config success");
     }
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)

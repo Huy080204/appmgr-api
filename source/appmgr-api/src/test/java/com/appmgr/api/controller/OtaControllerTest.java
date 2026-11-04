@@ -176,11 +176,11 @@ class OtaControllerTest {
 
     @Test
     void shouldReturnNoUpdateDirectiveWhenCurrentUpdateIdEqualsManifestId() {
-        stubLatestVersion("manifest-1");
+        Version version = stubLatestVersion("manifest-1");
         String json = "{\"type\":\"noUpdateAvailable\"}";
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-1");
-        when(otaSigningService.buildNoUpdateDirective())
+        when(otaSigningService.buildNoUpdateDirective(1L, version.getChannel()))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_DIRECTIVE, json, null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
@@ -190,8 +190,8 @@ class OtaControllerTest {
         assertThat(body).contains("name=\"directive\"");
         assertThat(body).doesNotContain("name=\"manifest\"");
         assertThat(body).contains(json);
-        verify(otaSigningService).buildNoUpdateDirective();
-        verify(otaSigningService, never()).buildManifest(any(Version.class), anyLong(), anyLong(), anyString());
+        verify(otaSigningService).buildNoUpdateDirective(1L, version.getChannel());
+        verify(otaSigningService, never()).buildManifest(any(Version.class), anyLong(), any(Channel.class), anyString());
     }
 
     @Test
@@ -199,27 +199,27 @@ class OtaControllerTest {
         Version version = stubLatestVersion("manifest-1");
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-0");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
-        verify(otaSigningService, never()).buildNoUpdateDirective();
+        verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
+        verify(otaSigningService, never()).buildNoUpdateDirective(1L, version.getChannel());
     }
 
     @Test
     void shouldBuildManifestWhenCurrentUpdateIdAbsent() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
-        verify(otaSigningService, never()).buildNoUpdateDirective();
+        verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
+        verify(otaSigningService, never()).buildNoUpdateDirective(1L, version.getChannel());
     }
 
     @Test
@@ -227,20 +227,20 @@ class OtaControllerTest {
         Version version = stubLatestVersion(null);
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
-        verify(otaSigningService).buildManifest(version, 1L, 5L, "ios");
-        verify(otaSigningService, never()).buildNoUpdateDirective();
+        verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
+        verify(otaSigningService, never()).buildNoUpdateDirective(1L, version.getChannel());
     }
 
     @Test
     void shouldSetProtocolHeadersAndMatchingBoundaryWhenManifestBuilt() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -260,7 +260,7 @@ class OtaControllerTest {
     void shouldWriteManifestPartOnceAndCloseWithBoundaryWhenManifestBuilt() {
         Version version = stubLatestVersion("manifest-1");
         String json = "{\"id\":\"manifest-1\"}";
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -275,11 +275,11 @@ class OtaControllerTest {
 
     @Test
     void shouldWriteDirectivePartWhenNoUpdateDirectiveBuilt() {
-        stubLatestVersion("manifest-1");
+        Version version = stubLatestVersion("manifest-1");
         String json = "{\"type\":\"noUpdateAvailable\"}";
         HttpHeaders headers = validHeaders();
         headers.set("expo-current-update-id", "manifest-1");
-        when(otaSigningService.buildNoUpdateDirective())
+        when(otaSigningService.buildNoUpdateDirective(1L, version.getChannel()))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_DIRECTIVE, json, null));
 
         ResponseEntity<byte[]> response = controller.manifest(headers);
@@ -295,7 +295,7 @@ class OtaControllerTest {
     @Test
     void shouldIncludeSignatureLineWhenSignatureHeaderPresent() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}",
                         "sig=:abc:, keyid=\"main\""));
 
@@ -307,7 +307,7 @@ class OtaControllerTest {
     @Test
     void shouldOmitSignatureLineWhenSignatureHeaderNull() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> response = controller.manifest(validHeaders());
@@ -318,7 +318,7 @@ class OtaControllerTest {
     @Test
     void shouldUseDifferentBoundaryOnEachCall() {
         Version version = stubLatestVersion("manifest-1");
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
         ResponseEntity<byte[]> first = controller.manifest(validHeaders());
@@ -359,7 +359,7 @@ class OtaControllerTest {
     void shouldServeMultipartManifestThroughMvcWhenOnlyByteArrayJacksonAndResourceConvertersRegistered() throws Exception {
         Version version = stubLatestVersion("manifest-1");
         String json = "{\"id\":\"manifest-1\"}";
-        when(otaSigningService.buildManifest(version, 1L, 5L, "ios"))
+        when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
         MvcResult result = buildMockMvc().perform(get("/v1/ota/manifest")

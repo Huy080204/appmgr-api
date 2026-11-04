@@ -118,4 +118,14 @@
     <changeSet author="Authentication" id="1792720716846-8">
         <addForeignKeyConstraint baseColumnNames="project_id" baseTableName="db_application" constraintName="FKe1dj9n0xfto5h06gxel9co887" deferrable="false" initiallyDeferred="false" referencedColumnNames="id" referencedTableName="db_project" validate="true"/>
     </changeSet>
+    <changeSet author="Authentication" id="1792720716846-9">
+        <addColumn tableName="db_channel">
+            <column name="json_key" type="VARCHAR(255)" afterColumn="name"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="Authentication" id="1792720716846-10">
+        <addColumn tableName="db_project">
+            <column name="settings" type="LONGTEXT" afterColumn="description"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

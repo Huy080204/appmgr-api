@@ -8,13 +8,18 @@ import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.form.project.CreateProjectForm;
 import com.appmgr.api.form.project.UpdateProjectForm;
+import com.appmgr.api.form.project.UpdateProjectSettingsForm;
 import com.appmgr.api.mapper.ProjectMapper;
 import com.appmgr.api.model.Project;
 import com.appmgr.api.model.criteria.ProjectCriteria;
 import com.appmgr.api.repository.ApplicationRepository;
 import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -33,6 +38,7 @@ import org.springframework.validation.BindingResult;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -250,5 +256,126 @@ class ProjectControllerTest {
         assertThat(result.getData().getTotalPages()).isEqualTo(1);
         assertThat(result.getData().getTotalElements()).isEqualTo(1L);
         assertThat(result.getMessage()).isEqualTo("Get list success");
+    }
+
+    // ------------------------------------------------------------------ settings
+
+    @Test
+    void shouldSaveNullSettingsWhenCreateProject() {
+        CreateProjectForm form = new CreateProjectForm();
+        form.setName("New Project");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(projectRepository.existsByName("New Project")).thenReturn(false);
+
+        ApiMessageDto<ProjectDto> result = controller.create(form, bindingResult);
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        verify(projectRepository).save(captor.capture());
+        assertThat(result.getResult()).isTrue();
+        assertThat(captor.getValue().getSettings()).isNull();
+    }
+
+    @Test
+    void shouldKeepSettingsWhenUpdateProject() {
+        UpdateProjectForm form = new UpdateProjectForm();
+        form.setId(1L);
+        form.setName("Test Project");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        Project project = new Project();
+        project.setId(1L);
+        project.setName("Test Project");
+        project.setSettings("old-json");
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+
+        controller.update(form, bindingResult);
+
+        assertThat(project.getSettings()).isEqualTo("old-json");
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void shouldReplaceSettingsWhenUpdateSettings() {
+        UpdateProjectSettingsForm form = new UpdateProjectSettingsForm();
+        form.setId(1L);
+        form.setSettings("{\"k\":1}");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        Project project = new Project();
+        project.setId(1L);
+        project.setSettings("old-json");
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+
+        ApiMessageDto<Void> result = controller.updateSettings(form, bindingResult);
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(project.getSettings()).isEqualTo("{\"k\":1}");
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenUpdateSettingsIdDoesNotExist() {
+        UpdateProjectSettingsForm form = new UpdateProjectSettingsForm();
+        form.setId(1L);
+        form.setSettings("{}");
+        BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
+        when(projectRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> controller.updateSettings(form, bindingResult))
+                .isInstanceOf(NotFoundException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.PROJECT_ERROR_NOT_FOUND);
+        verify(projectRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectBlankSettingsWhenValidatingUpdateSettingsForm() {
+        UpdateProjectSettingsForm form = new UpdateProjectSettingsForm();
+        form.setId(1L);
+        form.setSettings(" ");
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+        Set<ConstraintViolation<UpdateProjectSettingsForm>> violations = validator.validate(form);
+
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("settings"));
+    }
+
+    @Test
+    void shouldRejectNullIdWhenValidatingUpdateSettingsForm() {
+        UpdateProjectSettingsForm form = new UpdateProjectSettingsForm();
+        form.setSettings("{}");
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+        Set<ConstraintViolation<UpdateProjectSettingsForm>> violations = validator.validate(form);
+
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("id"));
+    }
+
+    @Test
+    void shouldReturnStoredSettingsStringWhenGetProject() {
+        Project project = new Project();
+        project.setId(1L);
+        project.setName("Test Project");
+        project.setSettings("stored-json");
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+
+        ApiMessageDto<ProjectDto> result = controller.get(1L);
+
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getData().getSettings()).isEqualTo("stored-json");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldNotReturnSettingsWhenListProjects() {
+        Project project = new Project();
+        project.setId(1L);
+        project.setName("Test Project");
+        project.setSettings("stored-json");
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Project> page = new PageImpl<>(Collections.singletonList(project), pageable, 1);
+        when(projectRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+
+        ApiMessageDto<ResponseListDto<List<ProjectDto>>> result = controller.list(new ProjectCriteria(), pageable);
+
+        assertThat(result.getData().getContent()).hasSize(1);
+        assertThat(result.getData().getContent().get(0).getSettings()).isNull();
     }
 }

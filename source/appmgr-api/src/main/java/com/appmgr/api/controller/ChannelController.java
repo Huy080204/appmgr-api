@@ -83,6 +83,9 @@ public class ChannelController extends ABasicController {
         if (channelRepository.existsByName(createChannelForm.getName())) {
             throw new BadRequestException("Channel name already existed", ErrorCode.CHANNEL_ERROR_NAME_EXISTED);
         }
+        if (channelRepository.existsByJsonKey(createChannelForm.getJsonKey())) {
+            throw new BadRequestException("Channel jsonKey already existed", ErrorCode.CHANNEL_ERROR_JSON_KEY_EXISTED);
+        }
         Channel channel = channelMapper.fromFormToEntity(createChannelForm);
         channelRepository.save(channel);
         return makeSuccessResponse(channelMapper.fromEntityToChannelIdDto(channel), "Create channel success");

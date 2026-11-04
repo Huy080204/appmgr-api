@@ -4,13 +4,19 @@ import com.appmgr.api.constant.BaseConstant;
 import com.appmgr.api.dto.ErrorCode;
 import com.appmgr.api.dto.ota.OtaAsset;
 import com.appmgr.api.dto.ota.OtaPart;
+import com.appmgr.api.dto.project.ProjectKeyDto;
+import com.appmgr.api.dto.project.ProjectSettingsDto;
+import com.appmgr.api.exception.BadRequestException;
 import com.appmgr.api.exception.NotFoundException;
 import com.appmgr.api.model.Channel;
+import com.appmgr.api.model.Project;
 import com.appmgr.api.model.Version;
 import com.appmgr.api.repository.ChannelRepository;
+import com.appmgr.api.repository.ProjectRepository;
 import com.appmgr.api.repository.VersionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +33,13 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.Signature;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -49,6 +57,8 @@ import static org.mockito.Mockito.when;
 class OtaSigningServiceTest {
     private static final String SERVER_URI = "http://localhost:8787";
     private static final String KEY_ID = "main";
+    private static final String SETTINGS_JSON = "{\"keys\":{}}";
+    private static final KeyPair KEY_PAIR = generateKeyPair();
     private static final Long APP_ID = 100L;
     private static final Long CHANNEL_ID = 7L;
     private static final Long VERSION_ID = 300L;
@@ -76,6 +86,10 @@ class OtaSigningServiceTest {
     @Mock
     private VersionRepository versionRepository;
     @Mock
+    private ProjectRepository projectRepository;
+    @Mock
+    private ProjectSettingsService projectSettingsService;
+    @Mock
     private VersionFileService versionFileService;
     @InjectMocks
     private OtaSigningService service;
@@ -91,7 +105,6 @@ class OtaSigningServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(service, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(service, "serverUri", SERVER_URI);
-        ReflectionTestUtils.setField(service, "keyId", KEY_ID);
     }
 
     // ---------------------------------------------------------------- buildManifest
@@ -100,9 +113,9 @@ class OtaSigningServiceTest {
     void shouldBuildManifestFieldsWhenAndroidPlatformDeclared() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(part.getName()).isEqualTo(BaseConstant.OTA_PART_MANIFEST);
@@ -119,9 +132,9 @@ class OtaSigningServiceTest {
     void shouldBuildLaunchAssetWhenBundleDeclared() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode launchAsset = objectMapper.readTree(part.getJson()).get("launchAsset");
         assertThat(launchAsset.get("hash").asText()).isEqualTo(sha256Base64Url(ANDROID_BUNDLE_BYTES));
@@ -135,9 +148,9 @@ class OtaSigningServiceTest {
     void shouldBuildAssetEntryWhenAssetDeclared() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode assets = objectMapper.readTree(part.getJson()).get("assets");
         assertThat(assets.size()).isEqualTo(1);
@@ -152,9 +165,9 @@ class OtaSigningServiceTest {
     void shouldUseIosFilesWhenPlatformIsIos() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_IOS);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_IOS);
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(root.get("launchAsset").get("key").asText()).isEqualTo(md5Hex(IOS_BUNDLE_BYTES));
@@ -167,9 +180,9 @@ class OtaSigningServiceTest {
     void shouldNotExposeServerPathWhenBuildingUrls() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         String tempDirName = versionDir.getFileName().toString();
         assertThat(part.getJson()).doesNotContain(tempDirName);
@@ -180,9 +193,9 @@ class OtaSigningServiceTest {
     void shouldBuildPathStyleUrlsWithoutQueryOrEncodedSlashesWhenBuildingManifest() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(root.get("launchAsset").get("url").asText())
@@ -199,9 +212,9 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         writeFile("assets/a b", ANDROID_ASSET_BYTES);
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode entry = objectMapper.readTree(part.getJson()).get("assets").get(0);
         assertThat(entry.get("url").asText()).isEqualTo(assetUrl("assets/a%20b"));
@@ -214,9 +227,9 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         writeFile("assets/abc", ANDROID_ASSET_BYTES);
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(root.get("launchAsset").get("url").asText()).isEqualTo(assetUrl(ANDROID_BUNDLE));
@@ -232,10 +245,9 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         writeFile(ANDROID_ASSET, ANDROID_ASSET_BYTES);
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_IOS))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_IOS))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -245,10 +257,9 @@ class OtaSigningServiceTest {
         writeStandardFixture();
         Files.delete(versionDir.resolve(ANDROID_BUNDLE));
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -258,10 +269,9 @@ class OtaSigningServiceTest {
         writeStandardFixture();
         Files.delete(versionDir.resolve(ANDROID_ASSET));
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -272,9 +282,9 @@ class OtaSigningServiceTest {
                 platformWith(ANDROID_BUNDLE, Collections.<Map<String, Object>>emptyList())));
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode root = objectMapper.readTree(part.getJson());
         assertThat(root.get("assets").isArray()).isTrue();
@@ -291,9 +301,9 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         writeFile(ANDROID_ASSET, ANDROID_ASSET_BYTES);
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode entry = objectMapper.readTree(part.getJson()).get("assets").get(0);
         assertThat(entry.get("fileExtension").asText()).isEmpty();
@@ -310,9 +320,9 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         writeFile(ANDROID_ASSET, ANDROID_ASSET_BYTES);
         stubVersionDir();
-        startService("");
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
         JsonNode entry = objectMapper.readTree(part.getJson()).get("assets").get(0);
         assertThat(entry.get("fileExtension").asText()).isEmpty();
@@ -325,10 +335,9 @@ class OtaSigningServiceTest {
         fileMetadata.put(BaseConstant.OTA_PLATFORM_ANDROID, null);
         writeMetadata(fileMetadata);
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -336,10 +345,9 @@ class OtaSigningServiceTest {
     @Test
     void shouldThrowNotFoundWhenMetadataFileMissingOnBuildManifest() {
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND)
                 .hasMessage("Asset not found")
@@ -351,10 +359,9 @@ class OtaSigningServiceTest {
         writeMetadata(Collections.<String, Object>singletonMap(BaseConstant.OTA_PLATFORM_ANDROID,
                 platformWith("../x", Collections.<Map<String, Object>>emptyList())));
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND)
                 .hasMessageNotContaining(versionDir.toString());
@@ -371,10 +378,9 @@ class OtaSigningServiceTest {
                 platformWith(ANDROID_BUNDLE, Collections.singletonList(asset))));
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND)
                 .hasMessageNotContaining(versionDir.toString());
@@ -385,10 +391,9 @@ class OtaSigningServiceTest {
         writeMetadata(Collections.<String, Object>singletonMap(BaseConstant.OTA_PLATFORM_ANDROID,
                 platformWith("", Collections.<Map<String, Object>>emptyList())));
         stubVersionDir();
-        startService("");
         Version version = buildVersion();
 
-        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID))
+        assertThatThrownBy(() -> service.buildManifest(version, APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND)
                 .hasMessageNotContaining(versionDir.toString());
@@ -397,88 +402,195 @@ class OtaSigningServiceTest {
     // ---------------------------------------------------------------- signing
 
     @Test
-    void shouldSignManifestWhenPrivateKeyConfigured() throws Exception {
+    void shouldSignManifestWithChannelJsonKeyWhenSettingsHoldPemKey() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        KeyPair keyPair = generateKeyPair();
-        startService(multiLinePrivateKey(keyPair));
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
-        assertThat(verifies(keyPair, part)).isTrue();
-    }
-
-    @Test
-    void shouldReturnNullSignatureWhenKeyNotConfigured() throws Exception {
-        writeStandardFixture();
-        stubVersionDir();
-        startService("");
-
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
-
-        assertThat(part.getSignatureHeader()).isNull();
-        assertThat(part.getJson()).isNotBlank();
-    }
-
-    @Test
-    void shouldReturnNullSignatureWhenKeyBlank() throws Exception {
-        writeStandardFixture();
-        stubVersionDir();
-        startService("   ");
-
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
-
-        assertThat(part.getSignatureHeader()).isNull();
-        assertThat(part.getJson()).isNotBlank();
-    }
-
-    @Test
-    void shouldReturnNullSignatureWhenKeyIsGarbage() throws Exception {
-        writeStandardFixture();
-        stubVersionDir();
-        startService("not a pem key");
-
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
-
-        assertThat(part.getSignatureHeader()).isNull();
-        assertThat(part.getJson()).isNotBlank();
+        assertThat(part.getSignatureHeader()).contains("keyid=\"" + KEY_ID + "\"");
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
     }
 
     @Test
     void shouldSignManifestWhenKeyIsSingleLineBase64WithoutHeaders() throws Exception {
         writeStandardFixture();
         stubVersionDir();
-        KeyPair keyPair = generateKeyPair();
-        startService(Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded()));
+        stubSigning(Base64.getEncoder().encodeToString(KEY_PAIR.getPrivate().getEncoded()));
 
-        OtaPart part = service.buildManifest(buildVersion(), APP_ID, CHANNEL_ID, BaseConstant.OTA_PLATFORM_ANDROID);
+        OtaPart part = service.buildManifest(buildVersion(), APP_ID, buildChannel(), BaseConstant.OTA_PLATFORM_ANDROID);
 
-        assertThat(verifies(keyPair, part)).isTrue();
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenKeyIsPkcs1RsaPrivateKeyPem() {
+        stubSigning(pkcs1PemPrivateKey());
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenManifestHasNoMatchingKey() throws Exception {
+        writeStandardFixture();
+        stubVersionDir();
+
+        assertSigningKeyNotFound(() -> service.buildManifest(buildVersion(), APP_ID, buildChannel(),
+                BaseConstant.OTA_PLATFORM_ANDROID));
     }
 
     // ---------------------------------------------------------------- buildNoUpdateDirective
 
     @Test
-    void shouldBuildSignedDirectiveWhenPrivateKeyConfigured() throws Exception {
-        KeyPair keyPair = generateKeyPair();
-        startService(multiLinePrivateKey(keyPair));
+    void shouldBuildSignedDirectiveWhenSettingsHoldKey() throws Exception {
+        stubSigning(pemPrivateKey());
 
-        OtaPart part = service.buildNoUpdateDirective();
+        OtaPart part = service.buildNoUpdateDirective(APP_ID, buildChannel());
 
         assertThat(part.getName()).isEqualTo(BaseConstant.OTA_PART_DIRECTIVE);
         assertThat(part.getJson()).isEqualTo("{\"type\":\"noUpdateAvailable\"}");
-        assertThat(verifies(keyPair, part)).isTrue();
+        assertThat(part.getSignatureHeader()).contains("keyid=\"" + KEY_ID + "\"");
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
     }
 
     @Test
-    void shouldBuildUnsignedDirectiveWhenKeyNotConfigured() {
-        startService("");
+    void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsNull() {
+        Channel channel = buildChannel();
+        channel.setJsonKey(null);
 
-        OtaPart part = service.buildNoUpdateDirective();
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, channel));
+    }
 
-        assertThat(part.getName()).isEqualTo(BaseConstant.OTA_PART_DIRECTIVE);
-        assertThat(part.getJson()).isEqualTo("{\"type\":\"noUpdateAvailable\"}");
-        assertThat(part.getSignatureHeader()).isNull();
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenChannelJsonKeyIsBlank() {
+        Channel channel = buildChannel();
+        channel.setJsonKey("  ");
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, channel));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenProjectMissing() {
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.empty());
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenProjectHasNoSettings() {
+        Project project = new Project();
+        project.setSettings(null);
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.of(project));
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenSettingsHaveNoEntryForJsonKey() {
+        stubSettings(Collections.singletonList(keyDto("other-key", pemPrivateKey())));
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenKeysListIsNull() {
+        stubSettings(null);
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenKeysListIsEmpty() {
+        stubSettings(Collections.<ProjectKeyDto>emptyList());
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldPickKeyWhoseKeyIdMatchesChannelJsonKeyAmongSeveral() throws Exception {
+        stubSettings(List.of(keyDto("other-1", "garbage-1"), keyDto(KEY_ID, pemPrivateKey()),
+                keyDto("other-2", "garbage-2")));
+
+        OtaPart part = service.buildNoUpdateDirective(APP_ID, buildChannel());
+
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
+    }
+
+    @Test
+    void shouldUseFirstMatchingElementWhenKeyIdIsDuplicated() throws Exception {
+        stubSettings(List.of(keyDto(KEY_ID, pemPrivateKey()), keyDto(KEY_ID, "not a pem key")));
+
+        OtaPart part = service.buildNoUpdateDirective(APP_ID, buildChannel());
+
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
+    }
+
+    @Test
+    void shouldSignWhenSettingsParsedByRealServiceFromMultiLinePemJson() throws Exception {
+        String pem = pemPrivateKey();
+        String publicKey = Base64.getEncoder().encodeToString(KEY_PAIR.getPublic().getEncoded());
+        String json = "{\"keys\":[{\"keyId\":\"" + KEY_ID + "\",\"privateKey\":\""
+                + pem.replace("\n", "\\n") + "\",\"publicKey\":\"" + publicKey + "\"}]}";
+        Project project = new Project();
+        project.setSettings(json);
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.of(project));
+        ProjectSettingsService realParser = new ProjectSettingsService();
+        ReflectionTestUtils.setField(realParser, "objectMapper", objectMapper);
+        when(projectSettingsService.fromJson(json)).thenReturn(realParser.fromJson(json));
+
+        OtaPart part = service.buildNoUpdateDirective(APP_ID, buildChannel());
+
+        assertThat(json).contains("\\n");
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
+    }
+
+    @Test
+    void shouldSignWhenSettingsTextHasRawCrLfInsideKeyStringsOfSecondElement() throws Exception {
+        String pem = pemPrivateKey().replace("\n", "\r\n");
+        String publicKey = "-----BEGIN PUBLIC KEY-----\r\n"
+                + Base64.getEncoder().encodeToString(KEY_PAIR.getPublic().getEncoded())
+                + "\r\n-----END PUBLIC KEY-----";
+        String json = "{\"keys\":[{\"keyId\":\"other\",\"privateKey\":\"x\",\"publicKey\":\"y\"},"
+                + "{\"keyId\":\"" + KEY_ID + "\",\"privateKey\":\"" + pem + "\",\"publicKey\":\"" + publicKey + "\"}]}";
+        ProjectSettingsService realService = new ProjectSettingsService();
+        ReflectionTestUtils.setField(realService, "objectMapper", objectMapper);
+        Project project = new Project();
+        project.setSettings(json);
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.of(project));
+        when(projectSettingsService.fromJson(json)).thenReturn(realService.fromJson(json));
+
+        OtaPart part = service.buildNoUpdateDirective(APP_ID, buildChannel());
+
+        assertThat(json).contains("\r\n");
+        assertThat(verifies(KEY_PAIR, part)).isTrue();
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenSettingsTextIsNotValidJson() {
+        Project project = new Project();
+        project.setSettings("{not json");
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.of(project));
+        when(projectSettingsService.fromJson("{not json"))
+                .thenThrow(new IllegalStateException("Cannot parse project settings"));
+
+        assertThatThrownBy(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()))
+                .isInstanceOf(BadRequestException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenPrivateKeyIsBlank() {
+        stubSigning("   ");
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
+    }
+
+    @Test
+    void shouldThrowSigningKeyNotFoundWhenPrivateKeyIsMalformed() {
+        stubSigning("not a pem key");
+
+        assertSigningKeyNotFound(() -> service.buildNoUpdateDirective(APP_ID, buildChannel()));
     }
 
     // ---------------------------------------------------------------- resolveAsset
@@ -488,7 +600,6 @@ class OtaSigningServiceTest {
         writeStandardFixture();
         stubLookup();
         stubVersionDir();
-        startService("");
 
         OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_BUNDLE);
 
@@ -501,7 +612,6 @@ class OtaSigningServiceTest {
         writeStandardFixture();
         stubLookup();
         stubVersionDir();
-        startService("");
 
         OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
 
@@ -517,7 +627,6 @@ class OtaSigningServiceTest {
         writeFile("assets/abc", ANDROID_ASSET_BYTES);
         stubLookup();
         stubVersionDir();
-        startService("");
 
         OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, "assets/abc");
 
@@ -533,7 +642,6 @@ class OtaSigningServiceTest {
         writeFile("assets/abc", ANDROID_ASSET_BYTES);
         stubLookup();
         stubVersionDir();
-        startService("");
 
         OtaAsset result = service.resolveAsset(APP, CHANNEL_ID_TEXT, VERSION, ANDROID_BUNDLE);
 
@@ -543,63 +651,54 @@ class OtaSigningServiceTest {
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsDotDotSegment() {
-        startService("");
 
         assertResolveNotFound("../secret");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetStartsWithSlash() {
-        startService("");
 
         assertResolveNotFound("/" + ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsBackslash() {
-        startService("");
 
         assertResolveNotFound("assets\\def");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsColon() {
-        startService("");
 
         assertResolveNotFound("C:/windows/win.ini");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsEmptySegment() {
-        startService("");
 
         assertResolveNotFound("assets//def");
     }
 
     @Test
     void shouldThrowNotFoundWhenAppIdIsNotNumeric() {
-        startService("");
 
         assertResolveNotFound("abc", CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenVersionIdIsNotNumeric() {
-        startService("");
 
         assertResolveNotFound(APP, CHANNEL_ID_TEXT, "abc", ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenAppIdIsNull() {
-        startService("");
 
         assertResolveNotFound(null, CHANNEL_ID_TEXT, VERSION, ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenVersionIdIsNull() {
-        startService("");
 
         assertResolveNotFound(APP, CHANNEL_ID_TEXT, null, ANDROID_ASSET);
     }
@@ -607,7 +706,6 @@ class OtaSigningServiceTest {
     @Test
     void shouldThrowNotFoundWhenChannelIdIsUnknown() {
         when(channelRepository.findById(CHANNEL_ID)).thenReturn(Optional.empty());
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -619,7 +717,6 @@ class OtaSigningServiceTest {
         when(versionRepository.findByIdAndApplicationIdAndChannelIdAndTypeAndStatus(
                 VERSION_ID, APP_ID, CHANNEL_ID, BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -630,7 +727,6 @@ class OtaSigningServiceTest {
         writeFile("assets/secret", "secret-bytes".getBytes(StandardCharsets.UTF_8));
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound("assets/secret");
     }
@@ -642,7 +738,6 @@ class OtaSigningServiceTest {
         Files.createDirectories(versionDir.resolve(ANDROID_ASSET));
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -659,42 +754,36 @@ class OtaSigningServiceTest {
                 "symlink cannot be created on this platform/privilege - test skipped");
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsNewline() {
-        startService("");
 
         assertResolveNotFound("assets/de\nf");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsTab() {
-        startService("");
 
         assertResolveNotFound("assets/de\tf");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetContainsNulChar() {
-        startService("");
 
         assertResolveNotFound("assets/de\u0000f");
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetIsNull() {
-        startService("");
 
         assertResolveNotFound(null);
     }
 
     @Test
     void shouldThrowNotFoundWhenAssetIsEmpty() {
-        startService("");
 
         assertResolveNotFound("");
     }
@@ -703,7 +792,6 @@ class OtaSigningServiceTest {
     void shouldThrowNotFoundWhenMetadataFileMissingOnResolveAsset() {
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -714,7 +802,6 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_ASSET, ANDROID_ASSET_BYTES);
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -726,7 +813,6 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_ASSET, ANDROID_ASSET_BYTES);
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_ASSET);
     }
@@ -738,15 +824,12 @@ class OtaSigningServiceTest {
         writeFile(ANDROID_BUNDLE, ANDROID_BUNDLE_BYTES);
         stubLookup();
         stubVersionDir();
-        startService("");
 
         assertResolveNotFound(ANDROID_BUNDLE);
     }
 
     @Test
     void shouldThrowNotFoundWhenChannelIdIsNotNumeric() {
-        startService("");
-
         assertResolveNotFound(APP, CHANNEL_NAME, VERSION, ANDROID_ASSET);
     }
 
@@ -773,15 +856,37 @@ class OtaSigningServiceTest {
         }
     }
 
-    private void startService(String privateKeyPem) {
-        ReflectionTestUtils.setField(service, "privateKeyPem", privateKeyPem);
-        service.init();
+    private void stubSigning(String privateKey) {
+        stubSettings(Collections.singletonList(keyDto(KEY_ID, privateKey)));
+    }
+
+    private void stubSettings(List<ProjectKeyDto> keys) {
+        Project project = new Project();
+        project.setSettings(SETTINGS_JSON);
+        ProjectSettingsDto settings = new ProjectSettingsDto();
+        settings.setKeys(keys);
+        when(projectRepository.findByApplicationId(APP_ID)).thenReturn(Optional.of(project));
+        when(projectSettingsService.fromJson(SETTINGS_JSON)).thenReturn(settings);
+    }
+
+    private ProjectKeyDto keyDto(String keyId, String privateKey) {
+        ProjectKeyDto dto = new ProjectKeyDto();
+        dto.setKeyId(keyId);
+        dto.setPrivateKey(privateKey);
+        dto.setPublicKey("public-key");
+        return dto;
+    }
+
+    private void assertSigningKeyNotFound(ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_SIGNING_KEY_NOT_FOUND);
     }
 
     private Channel buildChannel() {
         Channel channel = new Channel();
         channel.setId(CHANNEL_ID);
         channel.setName(CHANNEL_NAME);
+        channel.setJsonKey(KEY_ID);
         return channel;
     }
 
@@ -849,15 +954,28 @@ class OtaSigningServiceTest {
         Files.write(file, bytes);
     }
 
-    private KeyPair generateKeyPair() throws Exception {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048);
-        return generator.generateKeyPair();
+    private static KeyPair generateKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    private String multiLinePrivateKey(KeyPair keyPair) {
-        return Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.UTF_8))
-                .encodeToString(keyPair.getPrivate().getEncoded());
+    private String pemPrivateKey() {
+        String body = Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.UTF_8))
+                .encodeToString(KEY_PAIR.getPrivate().getEncoded());
+        return "-----BEGIN PRIVATE KEY-----\n" + body + "\n-----END PRIVATE KEY-----";
+    }
+
+    private String pkcs1PemPrivateKey() {
+        byte[] pkcs8 = KEY_PAIR.getPrivate().getEncoded();
+        // PKCS#8 header of a 2048-bit RSA key: 4 (SEQUENCE) + 3 (version) + 15 (algorithm) + 4 (OCTET STRING)
+        byte[] pkcs1 = Arrays.copyOfRange(pkcs8, 26, pkcs8.length);
+        String body = Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.UTF_8)).encodeToString(pkcs1);
+        return "-----BEGIN RSA PRIVATE KEY-----\n" + body + "\n-----END RSA PRIVATE KEY-----";
     }
 
     private boolean verifies(KeyPair keyPair, OtaPart part) throws Exception {

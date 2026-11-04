@@ -1,0 +1,15 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="Authentication" id="1793698093078-1">
+        <addColumn tableName="db_channel">
+            <column name="json_key" type="VARCHAR(255)" afterColumn="name"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="Authentication" id="1793698093078-2">
+        <addColumn tableName="db_project">
+            <column name="settings" type="LONGTEXT" afterColumn="description"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

@@ -66,9 +66,9 @@ public class OtaController extends ABasicController {
 
         OtaPart part;
         if (currentUpdateId != null && currentUpdateId.equals(version.getManifestId())) {
-            part = otaSigningService.buildNoUpdateDirective();
+            part = otaSigningService.buildNoUpdateDirective(appId, channel);
         } else {
-            part = otaSigningService.buildManifest(version, appId, channelId, platform);
+            part = otaSigningService.buildManifest(version, appId, channel, platform);
         }
         return buildMultipartResponse(part);
     }
