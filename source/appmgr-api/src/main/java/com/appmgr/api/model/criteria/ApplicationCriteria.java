@@ -25,6 +25,7 @@ public class ApplicationCriteria implements Serializable {
     private Integer status;
     private String name;
     private Long projectId;
+    private Integer type;
 
     @Schema(hidden = true)
     public Specification<Application> getCriteria() {
@@ -44,6 +45,10 @@ public class ApplicationCriteria implements Serializable {
 
                 if (StringUtils.hasText(getName())) {
                     predicates.add(cb.like(cb.lower(root.get("name")), "%" + getName().toLowerCase() + "%"));
+                }
+
+                if (getType() != null) {
+                    predicates.add(cb.equal(root.get("type"), getType()));
                 }
 
                 if (getProjectId() != null) {
