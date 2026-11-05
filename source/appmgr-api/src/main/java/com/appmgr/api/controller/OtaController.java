@@ -21,6 +21,7 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.HandlerMapping;
@@ -45,9 +46,9 @@ public class OtaController extends ABasicController {
     private OtaSigningService otaSigningService;
 
     @GetMapping(value = "/manifest")
-    public ResponseEntity<byte[]> manifest(@RequestHeader HttpHeaders headers) {
-        Long appId = parseId(headers, BaseConstant.OTA_HEADER_APP_ID);
-        Long channelId = parseId(headers, BaseConstant.OTA_HEADER_CHANNEL_NAME);
+    public ResponseEntity<byte[]> manifest(@RequestHeader HttpHeaders headers,
+                                           @RequestParam Long appId,
+                                           @RequestParam Long channelId) {
         String platform = requireHeader(headers, BaseConstant.OTA_HEADER_PLATFORM);
         if (!BaseConstant.OTA_PLATFORM_IOS.equals(platform) && !BaseConstant.OTA_PLATFORM_ANDROID.equals(platform)) {
             throw new BadRequestException("Invalid header " + BaseConstant.OTA_HEADER_PLATFORM);
@@ -81,15 +82,6 @@ public class OtaController extends ABasicController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(otaAsset.getMediaType()))
                 .body(otaAsset.getResource());
-    }
-
-    private Long parseId(HttpHeaders headers, String name) {
-        String value = requireHeader(headers, name);
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            throw new BadRequestException("Invalid header " + name);
-        }
     }
 
     private String requireHeader(HttpHeaders headers, String name) {

@@ -61,37 +61,11 @@ class OtaControllerTest {
     @InjectMocks private OtaController controller;
 
     @Test
-    void shouldThrowBadRequestWhenAppIdHeaderMissing() {
-        HttpHeaders headers = validHeaders();
-        headers.remove("x-app-id");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenChannelIdHeaderMissing() {
-        HttpHeaders headers = validHeaders();
-        headers.remove("expo-channel-name");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void shouldNotQueryChannelWhenChannelIdHeaderMissing() {
-        HttpHeaders headers = validHeaders();
-        headers.remove("expo-channel-name");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-
-        verifyNoInteractions(channelRepository);
-    }
-
-    @Test
     void shouldThrowBadRequestWhenPlatformHeaderMissing() {
         HttpHeaders headers = validHeaders();
         headers.remove("expo-platform");
 
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> controller.manifest(headers, 1L, 5L)).isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -99,33 +73,7 @@ class OtaControllerTest {
         HttpHeaders headers = validHeaders();
         headers.remove("expo-runtime-version");
 
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenChannelIdHeaderBlank() {
-        HttpHeaders headers = validHeaders();
-        headers.set("expo-channel-name", "   ");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenChannelIdHeaderNotNumeric() {
-        HttpHeaders headers = validHeaders();
-        headers.set("expo-channel-name", "production");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-
-        verifyNoInteractions(channelRepository);
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenAppIdHeaderNotNumeric() {
-        HttpHeaders headers = validHeaders();
-        headers.set("x-app-id", "abc");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> controller.manifest(headers, 1L, 5L)).isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -133,23 +81,14 @@ class OtaControllerTest {
         HttpHeaders headers = validHeaders();
         headers.set("expo-platform", "web");
 
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void shouldThrowBadRequestWhenOnlyLegacyAppIdHeaderGiven() {
-        HttpHeaders headers = validHeaders();
-        headers.remove("x-app-id");
-        headers.set("appId", "1");
-
-        assertThatThrownBy(() -> controller.manifest(headers)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> controller.manifest(headers, 1L, 5L)).isInstanceOf(BadRequestException.class);
     }
 
     @Test
     void shouldThrowNotFoundWhenChannelIdUnknown() {
         when(channelRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> controller.manifest(validHeaders()))
+        assertThatThrownBy(() -> controller.manifest(validHeaders(), 1L, 5L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CHANNEL_ERROR_NOT_FOUND);
     }
@@ -161,7 +100,7 @@ class OtaControllerTest {
                 1L, 5L, "1.0.0", BaseConstant.VERSION_TYPE_OTA, BaseConstant.STATUS_ACTIVE))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> controller.manifest(validHeaders()))
+        assertThatThrownBy(() -> controller.manifest(validHeaders(), 1L, 5L))
                 .isInstanceOf(NotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VERSION_ERROR_NOT_FOUND);
     }
@@ -175,7 +114,7 @@ class OtaControllerTest {
         when(otaSigningService.buildNoUpdateDirective(1L, version.getChannel()))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_DIRECTIVE, json, null));
 
-        ResponseEntity<byte[]> response = controller.manifest(headers);
+        ResponseEntity<byte[]> response = controller.manifest(headers, 1L, 5L);
 
         assertThat(response.getStatusCodeValue()).isEqualTo(200);
         String body = bodyOf(response);
@@ -194,7 +133,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> response = controller.manifest(headers);
+        ResponseEntity<byte[]> response = controller.manifest(headers, 1L, 5L);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
         verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
@@ -207,7 +146,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> response = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> response = controller.manifest(validHeaders(), 1L, 5L);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
         verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
@@ -222,7 +161,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> response = controller.manifest(headers);
+        ResponseEntity<byte[]> response = controller.manifest(headers, 1L, 5L);
 
         assertThat(bodyOf(response)).contains("name=\"manifest\"");
         verify(otaSigningService).buildManifest(version, 1L, version.getChannel(), "ios");
@@ -235,7 +174,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> response = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> response = controller.manifest(validHeaders(), 1L, 5L);
 
         HttpHeaders out = response.getHeaders();
         assertThat(out.getFirst("expo-protocol-version")).isEqualTo("1");
@@ -255,7 +194,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
-        ResponseEntity<byte[]> response = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> response = controller.manifest(validHeaders(), 1L, 5L);
 
         String boundary = boundaryOf(response);
         String body = bodyOf(response);
@@ -274,7 +213,7 @@ class OtaControllerTest {
         when(otaSigningService.buildNoUpdateDirective(1L, version.getChannel()))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_DIRECTIVE, json, null));
 
-        ResponseEntity<byte[]> response = controller.manifest(headers);
+        ResponseEntity<byte[]> response = controller.manifest(headers, 1L, 5L);
 
         String boundary = boundaryOf(response);
         String body = bodyOf(response);
@@ -291,7 +230,7 @@ class OtaControllerTest {
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}",
                         "sig=:abc:, keyid=\"main\""));
 
-        ResponseEntity<byte[]> response = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> response = controller.manifest(validHeaders(), 1L, 5L);
 
         assertThat(bodyOf(response)).contains("expo-signature: sig=:abc:, keyid=\"main\"" + CRLF);
     }
@@ -302,7 +241,7 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> response = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> response = controller.manifest(validHeaders(), 1L, 5L);
 
         assertThat(bodyOf(response)).doesNotContain("expo-signature:");
     }
@@ -313,8 +252,8 @@ class OtaControllerTest {
         when(otaSigningService.buildManifest(version, 1L, version.getChannel(), "ios"))
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, "{\"id\":\"manifest-1\"}", null));
 
-        ResponseEntity<byte[]> first = controller.manifest(validHeaders());
-        ResponseEntity<byte[]> second = controller.manifest(validHeaders());
+        ResponseEntity<byte[]> first = controller.manifest(validHeaders(), 1L, 5L);
+        ResponseEntity<byte[]> second = controller.manifest(validHeaders(), 1L, 5L);
 
         assertThat(boundaryOf(first)).isNotEqualTo(boundaryOf(second));
     }
@@ -355,8 +294,8 @@ class OtaControllerTest {
                 .thenReturn(new OtaPart(BaseConstant.OTA_PART_MANIFEST, json, null));
 
         MvcResult result = buildMockMvc().perform(get("/v1/ota/manifest")
-                        .header("x-app-id", "1")
-                        .header("expo-channel-name", "5")
+                        .param("appId", "1")
+                        .param("channelId", "5")
                         .header("expo-platform", "ios")
                         .header("expo-runtime-version", "1.0.0"))
                 .andExpect(status().isOk())
@@ -368,6 +307,40 @@ class OtaControllerTest {
         String body = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
         assertThat(body).contains(json);
         assertThat(body).endsWith("--" + boundary + "--" + CRLF);
+    }
+
+    @Test
+    void shouldReturnBadRequestThroughMvcWhenAppIdParamMissing() throws Exception {
+        buildMockMvc().perform(get("/v1/ota/manifest")
+                        .param("channelId", "5")
+                        .header("expo-platform", "ios")
+                        .header("expo-runtime-version", "1.0.0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(channelRepository);
+    }
+
+    @Test
+    void shouldReturnBadRequestThroughMvcWhenChannelIdParamMissing() throws Exception {
+        buildMockMvc().perform(get("/v1/ota/manifest")
+                        .param("appId", "1")
+                        .header("expo-platform", "ios")
+                        .header("expo-runtime-version", "1.0.0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(channelRepository);
+    }
+
+    @Test
+    void shouldReturnBadRequestThroughMvcWhenAppIdParamNotNumeric() throws Exception {
+        buildMockMvc().perform(get("/v1/ota/manifest")
+                        .param("appId", "abc")
+                        .param("channelId", "5")
+                        .header("expo-platform", "ios")
+                        .header("expo-runtime-version", "1.0.0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(channelRepository);
     }
 
     @Test
@@ -430,8 +403,6 @@ class OtaControllerTest {
 
     private HttpHeaders validHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-app-id", "1");
-        headers.set("expo-channel-name", "5");
         headers.set("expo-platform", "ios");
         headers.set("expo-runtime-version", "1.0.0");
         return headers;
