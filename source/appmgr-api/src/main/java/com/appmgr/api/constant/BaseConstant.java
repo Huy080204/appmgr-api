@@ -62,8 +62,6 @@ public class BaseConstant {
     public static final String OTA_CACHE_CONTROL = "private, max-age=0";
 
     // OTA: request
-    public static final String OTA_HEADER_APP_ID = "x-app-id";
-    public static final String OTA_HEADER_CHANNEL_NAME = "expo-channel-name";
     public static final String OTA_HEADER_PLATFORM = "expo-platform";
     public static final String OTA_HEADER_RUNTIME_VERSION = "expo-runtime-version";
     public static final String OTA_HEADER_CURRENT_UPDATE_ID = "expo-current-update-id";
